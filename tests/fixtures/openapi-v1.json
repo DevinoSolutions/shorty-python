@@ -1,0 +1,2315 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Shorty API",
+    "version": "1.0.0",
+    "description": "The Shorty developer API. Authenticate with an API key (`Authorization: Bearer shk_…`) or an OAuth 2.1 access token. Errors follow RFC 9457 (application/problem+json).\n\nGuides and reference: [Quickstart](https://aishorty.com/docs/api) · [Operations](https://aishorty.com/docs/api/operations) · [Errors](https://aishorty.com/docs/api/errors) · [Webhooks](https://aishorty.com/docs/api/webhooks) · [Changelog](https://aishorty.com/changelog) · [Developer hub](https://aishorty.com/developers)",
+    "contact": {
+      "name": "Shorty API Support",
+      "url": "https://aishorty.com/docs/api"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://aishorty.com"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Usage"
+    },
+    {
+      "name": "Articles"
+    },
+    {
+      "name": "Transcriptions"
+    },
+    {
+      "name": "Jobs"
+    },
+    {
+      "name": "Subtitles"
+    },
+    {
+      "name": "Summaries"
+    }
+  ],
+  "security": [
+    {
+      "BearerApiKey": []
+    }
+  ],
+  "paths": {
+    "/v1/usage": {
+      "get": {
+        "operationId": "getUsage",
+        "summary": "Get plan, limits, and usage",
+        "tags": [
+          "Usage"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Returns the authenticated account’s plan (Free / Premium / Pro), tier limits (upload sizes, real-time minutes, conversion caps), and current cloud-conversion usage against the daily quota.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/articles": {
+      "get": {
+        "operationId": "listArticles",
+        "summary": "List your articles",
+        "tags": [
+          "Articles"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Returns the authenticated account’s articles (summaries), newest first, cursor-paginated. Pass the previous response’s `next_cursor` as `?cursor=` to fetch the next page; a cursor is only valid against the SAME query it was minted under.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/articles/search": {
+      "get": {
+        "operationId": "searchArticles",
+        "summary": "Search your articles",
+        "tags": [
+          "Articles"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Full-text search over the authenticated account’s own articles (matches title, description, source URL). `q` is required. Results are recency-ranked; pass `limit` (1–20, default 8) to size the page. This endpoint is page-limited rather than cursor-paginated because search is a ranked top-N, which a keyset cursor cannot express.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 8,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            }
+          },
+          {
+            "in": "query",
+            "name": "article_type",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/articles/{articleId}": {
+      "get": {
+        "operationId": "getArticle",
+        "summary": "Get an article",
+        "tags": [
+          "Articles"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Returns one article the authenticated account owns, including its generated summary parts and extracted body text. A non-existent or foreign id returns 404.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "articleId",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/transcriptions": {
+      "get": {
+        "operationId": "listTranscriptions",
+        "summary": "List your transcriptions",
+        "tags": [
+          "Transcriptions"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Returns the authenticated account’s transcriptions, newest first, cursor-paginated. Pass the previous response’s `next_cursor` as `?cursor=` for the next page; a cursor is only valid against the SAME query it was minted under.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createTranscription",
+        "summary": "Create a transcription",
+        "tags": [
+          "Transcriptions"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Starts an async transcription of media at the given URL. Responds 202 with a `Location` header and a `job_id` you can poll at GET /v1/jobs/{id}. Send an `Idempotency-Key` header to make retries safe. If the transcription service cannot start the job, responds 503.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "description": "Optional client-generated key (1–255 visible ASCII chars) that makes this POST replay-safe: a retry with the SAME key and body returns the original response (with `Idempotency-Replayed: true`) instead of creating a duplicate. Reusing a key with a different body is rejected (422).",
+              "example": "idem-8f3a1c2e-2026-07-20",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "description": "Optional client-generated key (1–255 visible ASCII chars) that makes this POST replay-safe: a retry with the SAME key and body returns the original response (with `Idempotency-Replayed: true`) instead of creating a duplicate. Reusing a key with a different body is rejected (422)."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTranscriptionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/transcriptions/{transcriptionId}": {
+      "get": {
+        "operationId": "getTranscription",
+        "summary": "Get a transcription",
+        "tags": [
+          "Transcriptions"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Returns one transcription the authenticated account owns, including the transcript text. A non-existent or foreign id returns 404.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transcriptionId",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jobs/{jobId}": {
+      "get": {
+        "operationId": "getJob",
+        "summary": "Get job status",
+        "tags": [
+          "Jobs"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Returns the status of an async job the authenticated account started (a summary, transcription, or subtitle job created via a POST here). The body is the canonical nested job-status shape used across every Shorty surface. A non-existent or foreign job id returns 404.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subtitles/{jobId}/download": {
+      "get": {
+        "operationId": "downloadSubtitles",
+        "summary": "Download a subtitle artifact",
+        "tags": [
+          "Subtitles"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Returns a short-lived presigned URL for a completed subtitle job’s artifact. Use `?kind=` to pick srt (default), vtt, ass, or the burned-in mp4. A job that is not complete returns 409; a missing or foreign job id returns 404; an artifact kind not generated for the job returns 404.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "schema": {
+              "default": "srt",
+              "type": "string",
+              "enum": [
+                "srt",
+                "vtt",
+                "ass",
+                "burned"
+              ]
+            }
+          },
+          {
+            "in": "path",
+            "name": "jobId",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubtitleDownload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/summaries": {
+      "post": {
+        "operationId": "createSummary",
+        "summary": "Create a summary",
+        "tags": [
+          "Summaries"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Starts an async summary job for a YouTube video, a web page, or pasted text, selected by the `source` field. Usually responds 202 with a `Location` header and a `job_id` you can poll at GET /v1/jobs/{id} (send an `Idempotency-Key` header to make retries safe). If the exact source was already summarized in the requested language it responds 200 `already_complete` with the `article_id` and no job to poll.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "description": "Optional client-generated key (1–255 visible ASCII chars) that makes this POST replay-safe: a retry with the SAME key and body returns the original response (with `Idempotency-Replayed: true`) instead of creating a duplicate. Reusing a key with a different body is rejected (422).",
+              "example": "idem-8f3a1c2e-2026-07-20",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "description": "Optional client-generated key (1–255 visible ASCII chars) that makes this POST replay-safe: a retry with the SAME key and body returns the original response (with `Idempotency-Replayed: true`) instead of creating a duplicate. Reusing a key with a different body is rejected (422)."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSummaryBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryAlreadyComplete"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subtitles": {
+      "post": {
+        "operationId": "createSubtitles",
+        "summary": "Create subtitles",
+        "tags": [
+          "Subtitles"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Starts an async subtitle job for media at the given URL. Responds 202 with a `Location` header and a `job_id` you can poll at GET /v1/jobs/{id}. Send an `Idempotency-Key` header to make retries safe. Exceeding the monthly free quota returns 429 (quota_exhausted); a Premium-only subtitle style or a free-plan duration/size cap returns 403 (feature_not_enabled); media over the hard duration/size ceiling returns 413 (request_too_large); an upstream start failure returns 503.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "description": "Optional client-generated key (1–255 visible ASCII chars) that makes this POST replay-safe: a retry with the SAME key and body returns the original response (with `Idempotency-Replayed: true`) instead of creating a duplicate. Reusing a key with a different body is rejected (422).",
+              "example": "idem-8f3a1c2e-2026-07-20",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "description": "Optional client-generated key (1–255 visible ASCII chars) that makes this POST replay-safe: a retry with the SAME key and body returns the original response (with `Idempotency-Replayed: true`) instead of creating a duplicate. Reusing a key with a different body is rejected (422)."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubtitlesBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateTranscriptionBody": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "A URL to audio/video media to transcribe.",
+            "example": "https://example.com/podcast.mp3"
+          },
+          "language": {
+            "default": "english",
+            "description": "Language name (\"english\") or ISO-639-1 code (\"en\"). Defaults to english.",
+            "example": "english",
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "CreateSummaryBody": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "const": "youtube"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "A YouTube video URL.",
+                "example": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+              },
+              "language": {
+                "default": "english",
+                "description": "Language name (\"english\") or ISO-639-1 code (\"en\"). Defaults to english.",
+                "example": "english",
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "source",
+              "url"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "const": "url"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "A web page / article URL to summarize.",
+                "example": "https://example.com/blog/post"
+              },
+              "language": {
+                "default": "english",
+                "description": "Language name (\"english\") or ISO-639-1 code (\"en\"). Defaults to english.",
+                "example": "english",
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "source",
+              "url"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "const": "text"
+              },
+              "content": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The raw text to summarize."
+              },
+              "title": {
+                "description": "Optional title hint (reserved — currently derived by the summarizer).",
+                "type": "string"
+              },
+              "language": {
+                "default": "english",
+                "description": "Language name (\"english\") or ISO-639-1 code (\"en\"). Defaults to english.",
+                "example": "english",
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "source",
+              "content"
+            ]
+          }
+        ],
+        "type": "object"
+      },
+      "CreateSubtitlesBody": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "A URL to the media to caption.",
+            "example": "https://example.com/clip.mp4"
+          },
+          "language": {
+            "default": "english",
+            "description": "Language name (\"english\") or ISO-639-1 code (\"en\"). Defaults to english.",
+            "example": "english",
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 20
+          },
+          "style": {
+            "default": "CLEAN",
+            "description": "Subtitle style. CLEAN is free; TIKTOK/PODCAST/MINIMAL require Premium.",
+            "example": "CLEAN",
+            "type": "string",
+            "enum": [
+              "CLEAN",
+              "TIKTOK",
+              "PODCAST",
+              "MINIMAL"
+            ]
+          },
+          "duration_seconds": {
+            "description": "Measured media duration in seconds, if known. Lets the API reject media over your plan’s duration cap up front (413) instead of failing the job later.",
+            "example": 542,
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "UsageResponse": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "$ref": "#/components/schemas/UsagePlan"
+          },
+          "subscription": {
+            "$ref": "#/components/schemas/UsageSubscription"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/UsageLimits"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/UsageCounters"
+          }
+        },
+        "required": [
+          "plan",
+          "subscription",
+          "limits",
+          "usage"
+        ],
+        "additionalProperties": false
+      },
+      "UsagePlan": {
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": "string",
+            "enum": [
+              "free",
+              "subscriber",
+              "pro"
+            ],
+            "description": "The account tier id.",
+            "example": "free"
+          },
+          "planName": {
+            "type": "string",
+            "description": "Human-readable plan name.",
+            "example": "Free"
+          }
+        },
+        "required": [
+          "tier",
+          "planName"
+        ],
+        "additionalProperties": false
+      },
+      "UsageSubscription": {
+        "type": "object",
+        "properties": {
+          "isSubscribed": {
+            "type": "boolean",
+            "description": "Whether the account has any active paid access."
+          },
+          "isProSubscriber": {
+            "type": "boolean",
+            "description": "Whether the account holds the Pro entitlement."
+          },
+          "isOnTrial": {
+            "type": "boolean",
+            "description": "Whether the account is currently in a free trial."
+          },
+          "trialEndsAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO-8601 timestamp the trial ends, or null.",
+            "example": "2026-08-01T00:00:00.000Z"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO-8601 timestamp access expires, or null if perpetual/none."
+          },
+          "willRenew": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether the subscription auto-renews, or null if not applicable."
+          }
+        },
+        "required": [
+          "isSubscribed",
+          "isProSubscriber",
+          "isOnTrial",
+          "trialEndsAt",
+          "expiresAt",
+          "willRenew"
+        ],
+        "additionalProperties": false
+      },
+      "UsageLimits": {
+        "type": "object",
+        "properties": {
+          "transcription": {
+            "$ref": "#/components/schemas/UsageTranscriptionLimits"
+          },
+          "conversion": {
+            "$ref": "#/components/schemas/UsageConversionLimits"
+          }
+        },
+        "required": [
+          "transcription",
+          "conversion"
+        ],
+        "additionalProperties": false
+      },
+      "UsageTranscriptionLimits": {
+        "type": "object",
+        "properties": {
+          "maxUploadSizeGb": {
+            "type": "number",
+            "description": "Maximum upload size for a transcription, in GB.",
+            "example": 2
+          },
+          "maxUploadSizeLabel": {
+            "type": "string",
+            "description": "Display label for the upload size limit.",
+            "example": "2 GB"
+          },
+          "realtimeMaxDurationMinutes": {
+            "type": "number",
+            "description": "Maximum real-time transcription duration, in minutes."
+          },
+          "realtimeMaxDurationLabel": {
+            "type": "string",
+            "description": "Display label for the real-time duration limit."
+          }
+        },
+        "required": [
+          "maxUploadSizeGb",
+          "maxUploadSizeLabel",
+          "realtimeMaxDurationMinutes",
+          "realtimeMaxDurationLabel"
+        ],
+        "additionalProperties": false
+      },
+      "UsageConversionLimits": {
+        "type": "object",
+        "properties": {
+          "maxFileSizeMb": {
+            "type": "number",
+            "description": "Maximum file size for a conversion, in MB.",
+            "example": 100
+          },
+          "maxFileSizeLabel": {
+            "type": "string",
+            "description": "Display label for the conversion file-size limit."
+          },
+          "maxBatchItems": {
+            "type": "number",
+            "description": "Maximum number of files in a single batch conversion."
+          },
+          "canUseManagedQueue": {
+            "type": "boolean",
+            "description": "Whether the account may use the managed cloud conversion queue."
+          },
+          "dailyCloudQuota": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Daily cloud-conversion quota, or null for unlimited (paid tiers)."
+          }
+        },
+        "required": [
+          "maxFileSizeMb",
+          "maxFileSizeLabel",
+          "maxBatchItems",
+          "canUseManagedQueue",
+          "dailyCloudQuota"
+        ],
+        "additionalProperties": false
+      },
+      "UsageCounters": {
+        "type": "object",
+        "properties": {
+          "cloudConversionsUsedLast24h": {
+            "type": "number",
+            "description": "Cloud conversions consumed in the last 24 hours."
+          },
+          "cloudConversionsRemaining": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cloud conversions remaining today, or null for unlimited."
+          }
+        },
+        "required": [
+          "cloudConversionsUsedLast24h",
+          "cloudConversionsRemaining"
+        ],
+        "additionalProperties": false
+      },
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "A URI identifying the problem type.",
+            "example": "https://aishorty.com/docs/api/errors/validation_failed"
+          },
+          "title": {
+            "type": "string",
+            "description": "Short, human-readable summary of the problem type.",
+            "example": "Validation failed"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "HTTP status code, duplicated for convenience.",
+            "example": 400
+          },
+          "detail": {
+            "description": "Human-readable explanation specific to this occurrence.",
+            "type": "string"
+          },
+          "instance": {
+            "type": "string",
+            "description": "Identifies this specific occurrence (a request URN).",
+            "example": "urn:request:req_01J9Z8ABCDEFGH0123456789"
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable, machine-readable error code clients switch on.",
+            "example": "validation_failed"
+          },
+          "request_id": {
+            "type": "string",
+            "description": "The request id (also sent as the Request-Id header).",
+            "example": "req_01J9Z8ABCDEFGH0123456789"
+          },
+          "errors": {
+            "description": "Field-level errors (present on validation_failed problems).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProblemFieldError"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "instance",
+          "code",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "ProblemFieldError": {
+        "type": "object",
+        "properties": {
+          "pointer": {
+            "type": "string",
+            "description": "JSON-pointer-ish path to the offending input field, e.g. \"#/body/url\".",
+            "example": "#/body/url"
+          },
+          "code": {
+            "type": "string",
+            "description": "Machine-readable validation code (from the validator).",
+            "example": "invalid_type"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable explanation of this field error.",
+            "example": "Expected string, received number"
+          }
+        },
+        "required": [
+          "pointer",
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "ArticleListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Article"
+            }
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "Whether another page exists after this one."
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opaque cursor for the next page (pass as `?cursor=`), or null on the last page. Only valid against the SAME query filter."
+          }
+        },
+        "required": [
+          "data",
+          "has_more",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "Article": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable article id (use it on GET /v1/articles/{id}).",
+            "example": "a1b2c3d4-0000-4000-8000-000000000000"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Article title, or null if not yet summarized.",
+            "example": "How transformers work"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Short description/summary lead, or null."
+          },
+          "article_type": {
+            "type": "string",
+            "description": "Source kind: YOUTUBE_ARTICLE, WEBPAGE_ARTICLE, PDF_ARTICLE, WORD_ARTICLE, TEXT_ARTICLE, or AUDIO_ARTICLE.",
+            "example": "YOUTUBE_ARTICLE"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The original source URL, or null (e.g. text/file input)."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp the article was created.",
+            "example": "2026-07-20T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "article_type",
+          "source_url",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "ArticleSearchResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Article"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Number of hits returned on this page."
+          }
+        },
+        "required": [
+          "data",
+          "count"
+        ],
+        "additionalProperties": false
+      },
+      "ArticleDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable article id (use it on GET /v1/articles/{id}).",
+            "example": "a1b2c3d4-0000-4000-8000-000000000000"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Article title, or null if not yet summarized.",
+            "example": "How transformers work"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Short description/summary lead, or null."
+          },
+          "article_type": {
+            "type": "string",
+            "description": "Source kind: YOUTUBE_ARTICLE, WEBPAGE_ARTICLE, PDF_ARTICLE, WORD_ARTICLE, TEXT_ARTICLE, or AUDIO_ARTICLE.",
+            "example": "YOUTUBE_ARTICLE"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The original source URL, or null (e.g. text/file input)."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp the article was created.",
+            "example": "2026-07-20T12:00:00.000Z"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "parts": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ArticleSummaryPart"
+                    },
+                    "description": "The ordered sections of the generated summary."
+                  }
+                },
+                "required": [
+                  "parts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The generated summary, or null if not yet produced."
+          },
+          "body_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The extracted source text / transcript backing the summary, or null."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "article_type",
+          "source_url",
+          "created_at",
+          "summary",
+          "body_text"
+        ],
+        "additionalProperties": false
+      },
+      "ArticleSummaryPart": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Section heading, or null."
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Section body, or null."
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "TranscriptionListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Transcription"
+            }
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "Whether another page exists after this one."
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opaque cursor for the next page (pass as `?cursor=`), or null on the last page. Only valid against the SAME query filter."
+          }
+        },
+        "required": [
+          "data",
+          "has_more",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "Transcription": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable transcription id.",
+            "example": "t1b2c3d4-0000-4000-8000-000000000000"
+          },
+          "status": {
+            "type": "string",
+            "description": "Processing status: PENDING, PROCESSING, SUCCESS, or ERROR.",
+            "example": "SUCCESS"
+          },
+          "progress": {
+            "type": "number",
+            "description": "Completion fraction 0–100.",
+            "example": 100
+          },
+          "model_type": {
+            "type": "string",
+            "description": "Whisper model used (e.g. WHISPER_BASE, WHISPER_LARGE_V3).",
+            "example": "WHISPER_BASE"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Requested/detected language, or null for auto-detect."
+          },
+          "input_file": {
+            "type": "string",
+            "description": "The source media URL that was transcribed."
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Error message if the job failed, else null."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp the transcription was created.",
+            "example": "2026-07-20T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "progress",
+          "model_type",
+          "language",
+          "input_file",
+          "error",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "JobAccepted": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "description": "The id of the accepted async job.",
+            "example": "j1b2c3d4-0000-4000-8000-000000000000"
+          },
+          "status": {
+            "type": "string",
+            "description": "Initial job status (typically \"queued\").",
+            "example": "queued"
+          },
+          "tracking_url": {
+            "type": "string",
+            "description": "Relative path to poll this job’s status (GET /v1/jobs/{id}).",
+            "example": "/v1/jobs/j1b2c3d4-0000-4000-8000-000000000000"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "tracking_url"
+        ],
+        "additionalProperties": false
+      },
+      "TranscriptionDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable transcription id.",
+            "example": "t1b2c3d4-0000-4000-8000-000000000000"
+          },
+          "status": {
+            "type": "string",
+            "description": "Processing status: PENDING, PROCESSING, SUCCESS, or ERROR.",
+            "example": "SUCCESS"
+          },
+          "progress": {
+            "type": "number",
+            "description": "Completion fraction 0–100.",
+            "example": 100
+          },
+          "model_type": {
+            "type": "string",
+            "description": "Whisper model used (e.g. WHISPER_BASE, WHISPER_LARGE_V3).",
+            "example": "WHISPER_BASE"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Requested/detected language, or null for auto-detect."
+          },
+          "input_file": {
+            "type": "string",
+            "description": "The source media URL that was transcribed."
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Error message if the job failed, else null."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp the transcription was created.",
+            "example": "2026-07-20T12:00:00.000Z"
+          },
+          "output_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The transcript text, or null if not yet produced."
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "progress",
+          "model_type",
+          "language",
+          "input_file",
+          "error",
+          "created_at",
+          "output_text"
+        ],
+        "additionalProperties": false
+      },
+      "JobStatus": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "description": "The job id.",
+            "example": "j1b2c3d4-0000-4000-8000-000000000000"
+          },
+          "status": {
+            "type": "string",
+            "description": "Un-normalized status string (queued / processing / success / error / cancelled).",
+            "example": "processing"
+          },
+          "progress": {
+            "description": "Completion fraction 0–100, when known.",
+            "type": "number"
+          },
+          "step": {
+            "description": "Human-readable current step, or null.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "description": "Error message if the job failed, or null.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "output": {
+            "description": "Job-type-specific extras (e.g. jobType, title, outputId, articleId, transcriptionId).",
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "jobId",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "SubtitleDownload": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Short-lived presigned URL to download the subtitle artifact."
+          },
+          "expires_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp the presigned URL expires.",
+            "example": "2026-07-20T12:05:00.000Z"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "srt",
+              "vtt",
+              "ass",
+              "burned"
+            ],
+            "description": "Artifact kind: srt/vtt/ass subtitle file, or the burned-in mp4.",
+            "example": "srt"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Suggested download filename.",
+            "example": "subtitles-a1b2c3d4.srt"
+          }
+        },
+        "required": [
+          "url",
+          "expires_at",
+          "kind",
+          "filename"
+        ],
+        "additionalProperties": false
+      },
+      "SummaryAlreadyComplete": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "already_complete",
+            "description": "Marks a cache hit: this exact source was already summarized, so no new job was started.",
+            "example": "already_complete"
+          },
+          "article_id": {
+            "type": "string",
+            "description": "The id of the already-complete article — fetch it at GET /v1/articles/{id}.",
+            "example": "a1b2c3d4"
+          }
+        },
+        "required": [
+          "status",
+          "article_id"
+        ],
+        "additionalProperties": false
+      },
+      "SummaryAccepted": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The id of the accepted async job, or null when the job was accepted but is not trackable (poll is unavailable).",
+            "example": "j1b2c3d4-0000-4000-8000-000000000000"
+          },
+          "status": {
+            "type": "string",
+            "description": "Initial job status (typically \"queued\").",
+            "example": "queued"
+          },
+          "tracking_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Relative path to poll this job (GET /v1/jobs/{id}), or null when tracking is unavailable.",
+            "example": "/v1/jobs/j1b2c3d4-0000-4000-8000-000000000000"
+          },
+          "article_id": {
+            "description": "The created article id — present only on the accepted-but-untrackable case, so the caller can still locate the result at GET /v1/articles/{id}.",
+            "example": "a1b2c3d4",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "tracking_url"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "BearerApiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "A Shorty API key, sent as `Authorization: Bearer <key>`. An OAuth 2.1 access token issued to a connected app is also accepted on the same header."
+      }
+    }
+  }
+}
