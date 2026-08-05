@@ -1,0 +1,100 @@
+# Nightly drift gate: the live /v1 spec is the source of truth, and this SDK
+# pins a vendored copy at tests/fixtures/openapi-v1.json. When the server grows,
+# renames, or drops an operation, this opens an issue instead of letting the SDK
+# silently desync. Needs no API key — the spec endpoint is public.
+name: Spec drift
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Compare the live spec's operation set to the vendored fixture
+        id: drift
+        run: |
+          python - <<'PY' | tee drift-report.txt
+          import json
+          import urllib.request
+
+          VENDORED = "tests/fixtures/openapi-v1.json"
+          LIVE = "https://aishorty.com/api/openapi"
+
+          def operations(document):
+              methods = {"get", "post", "put", "patch", "delete"}
+              return {
+                  operation["operationId"]: f"{method.upper()} {path}"
+                  for path, entries in document["paths"].items()
+                  for method, operation in entries.items()
+                  if method.lower() in methods
+              }
+
+          with open(VENDORED, encoding="utf-8") as handle:
+              vendored = operations(json.load(handle))
+          with urllib.request.urlopen(LIVE, timeout=30) as response:
+              live = operations(json.load(response))
+
+          added = sorted(set(live) - set(vendored))
+          removed = sorted(set(vendored) - set(live))
+          moved = sorted(
+              op for op in set(live) & set(vendored) if live[op] != vendored[op]
+          )
+
+          if not (added or removed or moved):
+              print(f"no drift: {len(live)} operations match the vendored fixture")
+          else:
+              print("DRIFT DETECTED")
+              for label, ops in (("added", added), ("removed", removed), ("moved", moved)):
+                  for op in ops:
+                      print(f"- {label}: {op} ({live.get(op) or vendored.get(op)})")
+              raise SystemExit(1)
+          PY
+
+      - name: Open an issue when the spec has drifted
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs')
+            let report = 'The drift check failed before it could produce a report.'
+            try { report = fs.readFileSync('drift-report.txt', 'utf8') } catch {}
+            const title = 'Spec drift: /v1 has moved ahead of the vendored fixture'
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'spec-drift',
+            })
+            const body = [
+              'The live spec at https://aishorty.com/api/openapi no longer matches',
+              '`tests/fixtures/openapi-v1.json`.',
+              '',
+              '```',
+              report.trim(),
+              '```',
+              '',
+              'Re-vendor the fixture from `shortyapi/src/openapi/v1.json`, extend',
+              '`OPERATION_MAP` in `tests/test_parity.py`, and implement the new',
+              `operation. Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            ].join('\n')
+            if (existing.data.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.data[0].number, body,
+              })
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['spec-drift'],
+              })
+            }
