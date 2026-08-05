@@ -22,15 +22,37 @@ jobs:
         with:
           python-version: "3.13"
 
+      # NOTE: no `| tee` here. Piping the interpreter into tee makes the step's
+      # exit status tee's (always 0), which would silently disarm this gate —
+      # the script writes the report file itself instead.
       - name: Compare the live spec's operation set to the vendored fixture
         id: drift
         run: |
-          python - <<'PY' | tee drift-report.txt
+          python - <<'PY'
           import json
+          import sys
+          import urllib.error
           import urllib.request
 
           VENDORED = "tests/fixtures/openapi-v1.json"
           LIVE = "https://aishorty.com/api/openapi"
+          # The default `Python-urllib/x.y` agent is refused (403) by the edge,
+          # so identify the workflow explicitly.
+          USER_AGENT = (
+              "shorty-py-spec-drift/1.0 "
+              "(+https://github.com/DevinoSolutions/shorty-python)"
+          )
+
+          lines: list[str] = []
+
+          def emit(text: str) -> None:
+              print(text)
+              lines.append(text)
+
+          def report_and_exit(code: int) -> None:
+              with open("drift-report.txt", "w", encoding="utf-8") as handle:
+                  handle.write("\n".join(lines) + "\n")
+              sys.exit(code)
 
           def operations(document):
               methods = {"get", "post", "put", "patch", "delete"}
@@ -43,23 +65,30 @@ jobs:
 
           with open(VENDORED, encoding="utf-8") as handle:
               vendored = operations(json.load(handle))
-          with urllib.request.urlopen(LIVE, timeout=30) as response:
-              live = operations(json.load(response))
+
+          request = urllib.request.Request(LIVE, headers={"User-Agent": USER_AGENT})
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  live = operations(json.load(response))
+          except (urllib.error.URLError, ValueError) as exc:
+              # Reaching the spec IS the gate. A fetch failure is a real signal
+              # (endpoint moved, edge blocking CI), not something to swallow.
+              emit(f"FAILED to fetch {LIVE}: {exc!r}")
+              report_and_exit(1)
 
           added = sorted(set(live) - set(vendored))
           removed = sorted(set(vendored) - set(live))
-          moved = sorted(
-              op for op in set(live) & set(vendored) if live[op] != vendored[op]
-          )
+          moved = sorted(op for op in set(live) & set(vendored) if live[op] != vendored[op])
 
           if not (added or removed or moved):
-              print(f"no drift: {len(live)} operations match the vendored fixture")
-          else:
-              print("DRIFT DETECTED")
-              for label, ops in (("added", added), ("removed", removed), ("moved", moved)):
-                  for op in ops:
-                      print(f"- {label}: {op} ({live.get(op) or vendored.get(op)})")
-              raise SystemExit(1)
+              emit(f"no drift: {len(live)} operations match the vendored fixture")
+              report_and_exit(0)
+
+          emit("DRIFT DETECTED")
+          for label, ops in (("added", added), ("removed", removed), ("moved", moved)):
+              for op in ops:
+                  emit(f"- {label}: {op} ({live.get(op) or vendored.get(op)})")
+          report_and_exit(1)
           PY
 
       - name: Open an issue when the spec has drifted
