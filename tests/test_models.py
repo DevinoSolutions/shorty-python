@@ -342,6 +342,33 @@ async def test_the_async_read_resources_decode_the_same_models(
 
 
 @respx.mock(base_url=BASE_URL)
+async def test_the_async_transcription_create_mirrors_the_sync_one(
+    respx_mock: respx.MockRouter,
+) -> None:
+    import json
+
+    route = respx_mock.post("/v1/transcriptions").mock(
+        return_value=httpx.Response(
+            202,
+            json={"job_id": "j9", "status": "queued", "tracking_url": "/v1/jobs/j9"},
+            headers={"Idempotency-Replayed": "true"},
+        )
+    )
+    async with AsyncShorty(TEST_API_KEY) as client:
+        accepted = await client.transcriptions.create(
+            url="https://example.com/podcast.mp3", language="english"
+        )
+
+    assert accepted.job_id == "j9"
+    assert accepted.tracking_url == "/v1/jobs/j9"
+    assert accepted.idempotency_replayed is True
+    assert json.loads(route.calls.last.request.content) == {
+        "url": "https://example.com/podcast.mp3",
+        "language": "english",
+    }
+
+
+@respx.mock(base_url=BASE_URL)
 async def test_the_async_raw_request_escape_hatch_works(respx_mock: respx.MockRouter) -> None:
     respx_mock.post("/v1/anything").mock(return_value=httpx.Response(200, json={"ok": 1}))
     async with AsyncShorty(TEST_API_KEY) as client:

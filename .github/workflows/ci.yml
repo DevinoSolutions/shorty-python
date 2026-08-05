@@ -40,7 +40,9 @@ jobs:
       - name: Install dev dependencies
         run: python -m pip install --upgrade pip && pip install -e ".[dev]"
       - name: Run unit tests
-        run: pytest tests --ignore=tests/smoke --cov=src/shorty_py --cov-report=term-missing
+        run: >
+          pytest tests --ignore=tests/smoke
+          --cov=src/shorty_py --cov-report=term-missing --cov-fail-under=90
 
   build-and-import:
     runs-on: ubuntu-latest
@@ -57,9 +59,34 @@ jobs:
         run: python -m pip install --upgrade pip build && python -m build
       - name: Install the built wheel
         run: pip install dist/*.whl
-      - name: Import smoke (runs outside the source tree)
+      # Runs from /tmp so it exercises the INSTALLED wheel, not ./src.
+      - name: Import smoke on the installed wheel
         working-directory: /tmp
-        run: python -c "import shorty_py; print(shorty_py.__version__)"
+        run: |
+          python - <<'PY'
+          import shorty_py
+          from shorty_py import AsyncShorty, RateLimitError, Shorty, verify_webhook_signature
+          from shorty_py.types import Article
+
+          assert shorty_py.__version__ == "0.1.0", shorty_py.__version__
+
+          # The package must ship its typing marker or downstream type checkers
+          # silently treat it as untyped.
+          from pathlib import Path
+          assert (Path(shorty_py.__file__).parent / "py.typed").is_file(), "py.typed missing"
+
+          # Model round-trip, including the forward-compatibility bag.
+          article = Article.from_wire({"id": "a1", "title": "T", "brand_new": 1})
+          assert article.id == "a1" and article.extra["brand_new"] == 1
+
+          # The client constructs and never leaks the key through repr.
+          client = Shorty("shk_live_importsmoke")
+          assert "shk_live_" not in repr(client)
+          client.close()
+          assert issubclass(RateLimitError, Exception)
+          assert callable(AsyncShorty) and callable(verify_webhook_signature)
+          print("import smoke OK", shorty_py.__version__)
+          PY
 
   smoke:
     runs-on: ubuntu-latest
