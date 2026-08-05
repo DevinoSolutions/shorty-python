@@ -106,9 +106,11 @@ def test_an_unknown_article_id_produces_the_rfc_9457_not_found_contract(
 
 
 def test_a_bad_key_is_rejected_as_an_authentication_error() -> None:
-    with Shorty("shk_live_definitely-not-a-real-key", base_url=BASE_URL) as bad_client:
-        with pytest.raises(AuthenticationError) as caught:
-            bad_client.usage.get()
+    with (
+        Shorty("shk_live_definitely-not-a-real-key", base_url=BASE_URL) as bad_client,
+        pytest.raises(AuthenticationError) as caught,
+    ):
+        bad_client.usage.get()
 
     assert caught.value.status == 401
     assert caught.value.code in {"unauthorized", "invalid_api_key"}

@@ -23,8 +23,8 @@ def test_api_key_is_read_from_the_environment(monkeypatch: pytest.MonkeyPatch) -
 
 def test_an_explicit_api_key_wins_over_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SHORTY_API_KEY", "shk_live_fromenv")
-    with respx.mock(base_url=BASE_URL) as mock:
-        route = respx_mock.get("/v1/usage").mock(return_value=httpx.Response(200, json={}))
+    with respx.mock(base_url=BASE_URL) as router:
+        route = router.get("/v1/usage").mock(return_value=httpx.Response(200, json={}))
         with Shorty("shk_live_explicit") as client:
             client.usage.get()
     assert route.calls.last.request.headers["authorization"] == "Bearer shk_live_explicit"
@@ -65,7 +65,9 @@ def test_deep_copying_the_client_is_refused() -> None:
 
 
 @respx.mock(base_url=BASE_URL)
-def test_auth_and_user_agent_headers_have_the_documented_shape(respx_mock: respx.MockRouter) -> None:
+def test_auth_and_user_agent_headers_have_the_documented_shape(
+    respx_mock: respx.MockRouter,
+) -> None:
     route = respx_mock.get("/v1/usage").mock(return_value=httpx.Response(200, json={}))
     with Shorty(TEST_API_KEY) as client:
         client.usage.get()
@@ -73,7 +75,9 @@ def test_auth_and_user_agent_headers_have_the_documented_shape(respx_mock: respx
     headers = route.calls.last.request.headers
     assert headers["authorization"] == f"Bearer {TEST_API_KEY}"
     assert headers["accept"] == "application/json"
-    assert re.fullmatch(rf"shorty-py/{re.escape(__version__)} python/\d+\.\d+\.\d+", headers["user-agent"])
+    assert re.fullmatch(
+        rf"shorty-py/{re.escape(__version__)} python/\d+\.\d+\.\d+", headers["user-agent"]
+    )
     # The twin header for environments that forbid overriding User-Agent.
     assert headers["x-shorty-sdk"] == headers["user-agent"]
 

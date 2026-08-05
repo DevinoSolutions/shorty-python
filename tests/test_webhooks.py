@@ -84,9 +84,7 @@ def test_each_individually_missing_header_is_detected(missing: str) -> None:
     body = "{}"
     headers = headers_for(WEBHOOK_ID, NOW, f"v1,{sign(SECRET, f'{WEBHOOK_ID}.{NOW}.{body}')}")
     headers.pop(missing)
-    result = verify_webhook_signature(
-        payload=body, headers=headers, secret=SECRET, now_seconds=NOW
-    )
+    result = verify_webhook_signature(payload=body, headers=headers, secret=SECRET, now_seconds=NOW)
     assert result.reason == "missing_headers"
 
 
@@ -144,7 +142,9 @@ def test_the_default_tolerance_is_five_minutes() -> None:
     stale = NOW - DEFAULT_TOLERANCE_SECONDS - 1
     signature = f"v1,{sign(SECRET, f'{WEBHOOK_ID}.{stale}.{body}')}"
     result = verify_webhook_signature(
-        payload=body, headers=headers_for(WEBHOOK_ID, stale, signature), secret=SECRET,
+        payload=body,
+        headers=headers_for(WEBHOOK_ID, stale, signature),
+        secret=SECRET,
         now_seconds=NOW,
     )
     assert result.reason == "timestamp_out_of_tolerance"
@@ -171,7 +171,9 @@ def test_now_defaults_to_the_wall_clock_when_not_injected() -> None:
 @pytest.mark.parametrize("bad", ["", "   ", "not-a-number", "12.5", "1e9", "NaN"])
 def test_a_malformed_timestamp_is_reported_as_such(bad: str) -> None:
     result = verify_webhook_signature(
-        payload="{}", headers=headers_for(WEBHOOK_ID, bad, "v1,AAAA"), secret=SECRET,
+        payload="{}",
+        headers=headers_for(WEBHOOK_ID, bad, "v1,AAAA"),
+        secret=SECRET,
         now_seconds=NOW,
     )
     assert result.reason == "malformed_timestamp"
@@ -196,7 +198,9 @@ def test_a_secret_without_the_whsec_prefix_is_still_accepted() -> None:
     bare = SECRET.removeprefix("whsec_")
     signature = f"v1,{sign(SECRET, f'{WEBHOOK_ID}.{NOW}.{body}')}"
     assert verify_webhook_signature(
-        payload=body, headers=headers_for(WEBHOOK_ID, NOW, signature), secret=bare,
+        payload=body,
+        headers=headers_for(WEBHOOK_ID, NOW, signature),
+        secret=bare,
         now_seconds=NOW,
     ).valid
 
@@ -205,12 +209,16 @@ def test_the_result_is_truthy_for_valid_and_falsy_for_invalid() -> None:
     body = "{}"
     signature = f"v1,{sign(SECRET, f'{WEBHOOK_ID}.{NOW}.{body}')}"
     good = verify_webhook_signature(
-        payload=body, headers=headers_for(WEBHOOK_ID, NOW, signature), secret=SECRET,
+        payload=body,
+        headers=headers_for(WEBHOOK_ID, NOW, signature),
+        secret=SECRET,
         now_seconds=NOW,
     )
     assert good and good.valid and good.reason is None
     bad = verify_webhook_signature(
-        payload="tampered", headers=headers_for(WEBHOOK_ID, NOW, signature), secret=SECRET,
+        payload="tampered",
+        headers=headers_for(WEBHOOK_ID, NOW, signature),
+        secret=SECRET,
         now_seconds=NOW,
     )
     assert not bad

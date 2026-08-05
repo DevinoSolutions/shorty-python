@@ -115,7 +115,9 @@ def test_wait_for_polls_until_the_job_succeeds(respx_mock: respx.MockRouter) -> 
 
 
 @respx.mock(base_url=BASE_URL)
-def test_wait_for_raises_job_failed_carrying_the_jobs_own_error(respx_mock: respx.MockRouter) -> None:
+def test_wait_for_raises_job_failed_carrying_the_jobs_own_error(
+    respx_mock: respx.MockRouter,
+) -> None:
     respx_mock.get("/v1/jobs/j1").mock(
         return_value=httpx.Response(200, json=job("error", error="GPU worker died"))
     )
@@ -138,8 +140,12 @@ def test_a_cancelled_job_also_raises_job_failed(respx_mock: respx.MockRouter) ->
 
 
 @respx.mock(base_url=BASE_URL)
-def test_wait_for_raises_api_timeout_when_the_deadline_elapses(respx_mock: respx.MockRouter) -> None:
-    route = respx_mock.get("/v1/jobs/j1").mock(return_value=httpx.Response(200, json=job("processing")))
+def test_wait_for_raises_api_timeout_when_the_deadline_elapses(
+    respx_mock: respx.MockRouter,
+) -> None:
+    route = respx_mock.get("/v1/jobs/j1").mock(
+        return_value=httpx.Response(200, json=job("processing"))
+    )
     with Shorty(TEST_API_KEY) as client, pytest.raises(APITimeoutError) as caught:
         client.jobs.wait_for("j1", poll_interval=5.0, timeout=0.0)
 

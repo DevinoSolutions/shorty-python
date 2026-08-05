@@ -36,9 +36,9 @@ with Shorty() as client:
     # Summarize a YouTube video.
     result = client.summaries.create_from_youtube("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
     if result.is_complete:
-        article = client.articles.get(result.article_id)   # cached: nothing to wait for
+        article = client.articles.get(result.article_id)  # cached: nothing to wait for
     else:
-        client.jobs.wait_for(result.job_id)                # queued: poll to completion
+        client.jobs.wait_for(result.job_id)  # queued: poll to completion
         article = client.articles.get(client.jobs.get(result.job_id).output["articleId"])
 
     print(article.title)
@@ -50,8 +50,8 @@ Every `/v1` operation is authenticated. Pass a `shk_live_…` key explicitly, or
 `SHORTY_API_KEY` and let the client pick it up:
 
 ```python
-client = Shorty("shk_live_...")   # explicit wins over the environment
-client = Shorty()                 # reads SHORTY_API_KEY, raises ValueError if unset
+client = Shorty("shk_live_...")  # explicit wins over the environment
+client = Shorty()  # reads SHORTY_API_KEY, raises ValueError if unset
 ```
 
 Keys carry **scopes** — `articles:read`, `articles:write`, `transcriptions:read`,
@@ -76,11 +76,13 @@ Every method has an async twin. `AsyncShorty` takes the same arguments.
 import asyncio
 from shorty_py import AsyncShorty
 
+
 async def main() -> None:
     async with AsyncShorty() as client:
         page = await client.articles.list(limit=50)
-        async for article in page:        # walks every page
+        async for article in page:  # walks every page
             print(article.id, article.title)
+
 
 asyncio.run(main())
 ```
@@ -91,7 +93,7 @@ asyncio.run(main())
 
 ```python
 usage = client.usage.get()
-usage.plan.tier                       # "free" | "subscriber" | "pro"
+usage.plan.tier  # "free" | "subscriber" | "pro"
 usage.subscription.isOnTrial
 usage.limits.transcription.maxUploadSizeLabel
 usage.usage.cloudConversionsRemaining  # None = unlimited
@@ -100,15 +102,15 @@ usage.usage.cloudConversionsRemaining  # None = unlimited
 ### Articles — `client.articles`
 
 ```python
-page = client.articles.list(limit=50)          # cursor-paginated
-for article in page.auto_paging_iter():        # walks every page
+page = client.articles.list(limit=50)  # cursor-paginated
+for article in page.auto_paging_iter():  # walks every page
     print(article.id, article.article_type)
 
-hits = client.articles.search("transformers", limit=10)   # NOT paginated
+hits = client.articles.search("transformers", limit=10)  # NOT paginated
 print(hits.count, [a.title for a in hits.data])
 
 detail = client.articles.get("a1b2c3d4")
-for part in (detail.summary.parts if detail.summary else []):
+for part in detail.summary.parts if detail.summary else []:
     print(part.title, part.content)
 ```
 
@@ -149,22 +151,23 @@ state, not a failure, so poll the job rather than retrying the download:
 ```python
 job = client.subtitles.create(
     url="https://example.com/clip.mp4",
-    style="TIKTOK",            # CLEAN is free; TIKTOK/PODCAST/MINIMAL need Premium
-    duration_seconds=542,      # optional: get a 413 up front instead of a failed job
+    style="TIKTOK",  # CLEAN is free; TIKTOK/PODCAST/MINIMAL need Premium
+    duration_seconds=542,  # optional: get a 413 up front instead of a failed job
 )
 client.jobs.wait_for(job.job_id)
-artifact = client.subtitles.download(job.job_id, kind="srt")   # srt | vtt | ass | burned
+artifact = client.subtitles.download(job.job_id, kind="srt")  # srt | vtt | ass | burned
 print(artifact.url, artifact.expires_at)
 ```
 
 ### Jobs — `client.jobs`
 
 ```python
-status = client.jobs.get("j1")          # nested camelCase: .jobId, .progress, .step
+status = client.jobs.get("j1")  # nested camelCase: .jobId, .progress, .step
 final = client.jobs.wait_for("j1", poll_interval=2.0, timeout=600.0)
 
 from shorty_py import normalize_job_status
-normalize_job_status(status.status)     # QUEUED | PROCESSING | SUCCESS | ERROR | CANCELLED
+
+normalize_job_status(status.status)  # QUEUED | PROCESSING | SUCCESS | ERROR | CANCELLED
 ```
 
 `wait_for` is a **client-side** loop. It returns the final status on success, raises
@@ -183,10 +186,10 @@ from shorty_py import NotFoundError, RateLimitError, ShortyError
 try:
     client.articles.get("nope")
 except NotFoundError as exc:
-    print(exc.code, exc.request_id)     # "resource_not_found", "req_…"
+    print(exc.code, exc.request_id)  # "resource_not_found", "req_…"
 except RateLimitError as exc:
     print(exc.retry_after)
-except ShortyError as exc:              # base class for everything this SDK raises
+except ShortyError as exc:  # base class for everything this SDK raises
     print(exc)
 ```
 
@@ -216,15 +219,15 @@ relevance-ranked and returns a plain response, not a page.
 ```python
 page = client.articles.list(limit=50)
 
-for article in page:                    # this page only
+for article in page:  # this page only
     ...
-for article in page.auto_paging_iter(): # every page
+for article in page.auto_paging_iter():  # every page
     ...
 
-while page:                             # explicit walk
+while page:  # explicit walk
     for article in page.data:
         ...
-    page = page.next_page()             # None on the last page
+    page = page.next_page()  # None on the last page
 ```
 
 Paging reuses the original filters and only advances the opaque cursor — the server
@@ -237,12 +240,12 @@ per logical call and reuses it across every retry, so a retried POST is deduplic
 server-side instead of starting a second billable job.
 
 ```python
-client.transcriptions.create(url=...)                                  # auto key
+client.transcriptions.create(url=...)  # auto key
 client.transcriptions.create(url=..., idempotency_key="invoice-2026-08")  # your key
-client.transcriptions.create(url=..., idempotency_key=None)            # opt out; never retried
+client.transcriptions.create(url=..., idempotency_key=None)  # opt out; never retried
 
 accepted = client.summaries.create_from_url("https://example.com")
-accepted.idempotency_replayed   # True when the server replayed a stored response
+accepted.idempotency_replayed  # True when the server replayed a stored response
 ```
 
 Reusing a key with a different body is a `422 idempotency_key_reused`; a concurrent
@@ -263,7 +266,7 @@ to 60 s), otherwise full-jitter backoff `random(0, min(0.5 · 2ⁿ, 8))` seconds
 client = Shorty(timeout=30.0, max_retries=5)
 
 client.usage.get()
-client.last_rate_limit          # RateLimit(name=…, limit=…, remaining=…, reset_seconds=…)
+client.last_rate_limit  # RateLimit(name=…, limit=…, remaining=…, reset_seconds=…)
 ```
 
 `last_rate_limit` is `None` when the response carried no rate-limit headers — that is
@@ -279,13 +282,13 @@ bytes and verification will correctly fail.
 from shorty_py import verify_webhook_signature
 
 result = verify_webhook_signature(
-    payload=request.body,            # raw bytes/str, exactly as received
-    headers=request.headers,         # webhook-id / webhook-timestamp / webhook-signature
+    payload=request.body,  # raw bytes/str, exactly as received
+    headers=request.headers,  # webhook-id / webhook-timestamp / webhook-signature
     secret=os.environ["SHORTY_WEBHOOK_SECRET"],
 )
 if not result:
-    return 400, result.reason        # missing_headers | malformed_timestamp |
-                                     # timestamp_out_of_tolerance | no_matching_signature
+    return 400, result.reason  # missing_headers | malformed_timestamp |
+    # timestamp_out_of_tolerance | no_matching_signature
 ```
 
 Comparison is constant-time, and a header carrying several `v1,` tokens (a secret
@@ -303,8 +306,8 @@ Same retry rules apply; a POST without `idempotency_key=` is never retried.
 ## Debugging
 
 ```python
-client = Shorty(debug=True)          # method/path/status/attempt/request-id to stderr
-client = Shorty(debug=logger.info)   # or your own sink
+client = Shorty(debug=True)  # method/path/status/attempt/request-id to stderr
+client = Shorty(debug=logger.info)  # or your own sink
 ```
 
 Headers and bodies are never logged, and every line is passed through the same

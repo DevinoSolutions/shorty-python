@@ -11,6 +11,7 @@ import respx
 from shorty_py import (
     APIServerError,
     APITimeoutError,
+    AuthenticationError,
     QuotaExhaustedError,
     RateLimitError,
     Shorty,
@@ -113,11 +114,16 @@ def test_retryable_statuses_are_retried(status: int, respx_mock: respx.MockRoute
     assert route.call_count == 2
 
 
-@pytest.mark.parametrize(("code", "status"), [("validation_failed", 400), ("unauthorized", 401)])
+@pytest.mark.parametrize(
+    ("code", "status", "expected"),
+    [("validation_failed", 400, ValidationError), ("unauthorized", 401, AuthenticationError)],
+)
 @respx.mock(base_url=BASE_URL)
-def test_client_errors_are_not_retried(code: str, status: int, respx_mock: respx.MockRouter) -> None:
+def test_client_errors_are_not_retried(
+    code: str, status: int, expected: type[Exception], respx_mock: respx.MockRouter
+) -> None:
     route = respx_mock.get("/v1/usage").mock(return_value=problem_response(code, status))
-    with Shorty(TEST_API_KEY, max_retries=3) as client, pytest.raises(Exception):
+    with Shorty(TEST_API_KEY, max_retries=3) as client, pytest.raises(expected):
         client.usage.get()
     assert route.call_count == 1
 
@@ -126,7 +132,9 @@ def test_client_errors_are_not_retried(code: str, status: int, respx_mock: respx
 def test_a_503_service_unavailable_is_retried_then_surfaces_as_a_server_error(
     respx_mock: respx.MockRouter,
 ) -> None:
-    route = respx_mock.get("/v1/usage").mock(return_value=problem_response("service_unavailable", 503))
+    route = respx_mock.get("/v1/usage").mock(
+        return_value=problem_response("service_unavailable", 503)
+    )
     with Shorty(TEST_API_KEY, max_retries=2) as client, pytest.raises(APIServerError):
         client.usage.get()
     assert route.call_count == 3  # first attempt + 2 retries
@@ -197,7 +205,9 @@ def test_a_post_with_an_idempotency_key_is_retried_with_the_same_key(
 def test_a_413_on_a_write_is_a_validation_error_and_is_not_retried(
     respx_mock: respx.MockRouter,
 ) -> None:
-    route = respx_mock.post("/v1/subtitles").mock(return_value=problem_response("request_too_large", 413))
+    route = respx_mock.post("/v1/subtitles").mock(
+        return_value=problem_response("request_too_large", 413)
+    )
     with Shorty(TEST_API_KEY, max_retries=3) as client, pytest.raises(ValidationError):
         client.subtitles.create(url="https://example.com/clip.mp4", duration_seconds=99999)
     assert route.call_count == 1
@@ -257,7 +267,9 @@ async def test_the_async_client_applies_the_same_retry_policy(respx_mock: respx.
 
 
 @respx.mock(base_url=BASE_URL)
-async def test_the_async_client_refuses_to_retry_a_keyless_post(respx_mock: respx.MockRouter) -> None:
+async def test_the_async_client_refuses_to_retry_a_keyless_post(
+    respx_mock: respx.MockRouter,
+) -> None:
     from shorty_py import AsyncShorty
 
     route = respx_mock.post("/v1/summaries").mock(return_value=httpx.Response(503))

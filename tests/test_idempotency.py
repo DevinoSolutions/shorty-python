@@ -71,7 +71,9 @@ def test_every_write_auto_generates_an_idempotency_key(
 
 @respx.mock(base_url=BASE_URL)
 def test_a_caller_supplied_key_is_sent_verbatim(respx_mock: respx.MockRouter) -> None:
-    route = respx_mock.post("/v1/transcriptions").mock(return_value=httpx.Response(202, json=ACCEPTED))
+    route = respx_mock.post("/v1/transcriptions").mock(
+        return_value=httpx.Response(202, json=ACCEPTED)
+    )
     with Shorty(TEST_API_KEY) as client:
         client.transcriptions.create(
             url="https://example.com/a.mp3", idempotency_key="invoice-2026-08-05"
@@ -79,11 +81,15 @@ def test_a_caller_supplied_key_is_sent_verbatim(respx_mock: respx.MockRouter) ->
     assert route.calls.last.request.headers["idempotency-key"] == "invoice-2026-08-05"
 
 
-@respx.mock(base_url=BASE_URL)
+# assert_all_called=False on purpose: the whole point is that the route is
+# NEVER reached, because validation happens before the request is built.
+@respx.mock(base_url=BASE_URL, assert_all_called=False)
 def test_an_invalid_caller_key_fails_locally_before_any_request_is_made(
     respx_mock: respx.MockRouter,
 ) -> None:
-    route = respx_mock.post("/v1/transcriptions").mock(return_value=httpx.Response(202, json=ACCEPTED))
+    route = respx_mock.post("/v1/transcriptions").mock(
+        return_value=httpx.Response(202, json=ACCEPTED)
+    )
     with Shorty(TEST_API_KEY) as client, pytest.raises(ValueError):
         client.transcriptions.create(url="https://example.com/a.mp3", idempotency_key="bad key")
     assert route.call_count == 0
@@ -91,7 +97,9 @@ def test_an_invalid_caller_key_fails_locally_before_any_request_is_made(
 
 @respx.mock(base_url=BASE_URL)
 def test_passing_none_opts_out_of_the_header_entirely(respx_mock: respx.MockRouter) -> None:
-    route = respx_mock.post("/v1/transcriptions").mock(return_value=httpx.Response(202, json=ACCEPTED))
+    route = respx_mock.post("/v1/transcriptions").mock(
+        return_value=httpx.Response(202, json=ACCEPTED)
+    )
     with Shorty(TEST_API_KEY) as client:
         client.transcriptions.create(url="https://example.com/a.mp3", idempotency_key=None)
     assert "idempotency-key" not in route.calls.last.request.headers
@@ -113,7 +121,10 @@ def test_a_replayed_response_is_surfaced_on_the_result(respx_mock: respx.MockRou
 def test_a_fresh_response_is_not_marked_as_replayed(respx_mock: respx.MockRouter) -> None:
     respx_mock.post("/v1/transcriptions").mock(return_value=httpx.Response(202, json=ACCEPTED))
     with Shorty(TEST_API_KEY) as client:
-        assert client.transcriptions.create(url="https://example.com/a.mp3").idempotency_replayed is False
+        assert (
+            client.transcriptions.create(url="https://example.com/a.mp3").idempotency_replayed
+            is False
+        )
 
 
 @respx.mock(base_url=BASE_URL)

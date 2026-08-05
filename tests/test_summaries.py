@@ -83,7 +83,9 @@ def test_an_accepted_but_untrackable_job_keeps_the_article_id(respx_mock: respx.
 
 
 @respx.mock(base_url=BASE_URL)
-def test_the_youtube_constructor_emits_the_youtube_source_body(respx_mock: respx.MockRouter) -> None:
+def test_the_youtube_constructor_emits_the_youtube_source_body(
+    respx_mock: respx.MockRouter,
+) -> None:
     route = respx_mock.post("/v1/summaries").mock(return_value=httpx.Response(202, json=ACCEPTED))
     with Shorty(TEST_API_KEY) as client:
         client.summaries.create_from_youtube("https://youtu.be/x", language="french")
@@ -134,9 +136,7 @@ def test_the_generic_create_accepts_a_hand_built_body(respx_mock: respx.MockRout
 @respx.mock(base_url=BASE_URL)
 def test_a_replayed_summary_is_flagged(respx_mock: respx.MockRouter) -> None:
     respx_mock.post("/v1/summaries").mock(
-        return_value=httpx.Response(
-            202, json=ACCEPTED, headers={"Idempotency-Replayed": "true"}
-        )
+        return_value=httpx.Response(202, json=ACCEPTED, headers={"Idempotency-Replayed": "true"})
     )
     with Shorty(TEST_API_KEY) as client:
         result = client.summaries.create_from_url("https://example.com")

@@ -35,7 +35,7 @@ def test_a_single_page_is_iterable_and_sized(respx_mock: respx.MockRouter) -> No
     assert page.has_more is False
     assert page.next_cursor is None
     assert page.next_page() is None
-    assert "Page(rows=1, has_more=False)" == repr(page)
+    assert repr(page) == "Page(rows=1, has_more=False)"
 
 
 @respx.mock(base_url=BASE_URL)

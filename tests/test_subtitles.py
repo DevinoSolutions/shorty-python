@@ -120,7 +120,9 @@ def test_the_documented_poll_then_download_loop_works_end_to_end(
             httpx.Response(200, json={"jobId": "j1", "status": "success"}),
         ]
     )
-    respx_mock.get("/v1/subtitles/j1/download").mock(return_value=httpx.Response(200, json=DOWNLOAD))
+    respx_mock.get("/v1/subtitles/j1/download").mock(
+        return_value=httpx.Response(200, json=DOWNLOAD)
+    )
 
     with Shorty(TEST_API_KEY) as client:
         accepted = client.subtitles.create(url="https://example.com/clip.mp4")
@@ -145,7 +147,9 @@ async def test_the_async_subtitles_resource_mirrors_the_sync_one(
     respx_mock: respx.MockRouter,
 ) -> None:
     respx_mock.post("/v1/subtitles").mock(return_value=httpx.Response(202, json=ACCEPTED))
-    respx_mock.get("/v1/subtitles/j1/download").mock(return_value=httpx.Response(200, json=DOWNLOAD))
+    respx_mock.get("/v1/subtitles/j1/download").mock(
+        return_value=httpx.Response(200, json=DOWNLOAD)
+    )
 
     async with AsyncShorty(TEST_API_KEY) as client:
         accepted = await client.subtitles.create(

@@ -203,7 +203,10 @@ def test_the_client_exposes_the_rate_limit_from_the_last_response(
         return_value=httpx.Response(
             200,
             json=USAGE_BODY,
-            headers={"RateLimit-Policy": '"default";q=1000;w=60', "RateLimit": '"default";r=42;t=9'},
+            headers={
+                "RateLimit-Policy": '"default";q=1000;w=60',
+                "RateLimit": '"default";r=42;t=9',
+            },
         )
     )
     with Shorty(TEST_API_KEY) as client:
@@ -215,8 +218,9 @@ def test_the_client_exposes_the_rate_limit_from_the_last_response(
 
 @respx.mock(base_url=BASE_URL)
 def test_a_rate_limit_error_carries_the_parsed_rate_limit(respx_mock: respx.MockRouter) -> None:
-    from shorty_py import RateLimitError
     import pytest as _pytest
+
+    from shorty_py import RateLimitError
 
     respx_mock.get("/v1/usage").mock(
         return_value=httpx.Response(
@@ -238,9 +242,7 @@ async def test_the_async_client_also_exposes_the_last_rate_limit(
     respx_mock: respx.MockRouter,
 ) -> None:
     respx_mock.get("/v1/usage").mock(
-        return_value=httpx.Response(
-            200, json=USAGE_BODY, headers={"X-RateLimit-Remaining": "7"}
-        )
+        return_value=httpx.Response(200, json=USAGE_BODY, headers={"X-RateLimit-Remaining": "7"})
     )
     async with AsyncShorty(TEST_API_KEY) as client:
         await client.usage.get()
@@ -312,7 +314,9 @@ def test_creating_a_transcription_returns_the_accepted_job(respx_mock: respx.Moc
 
 
 @respx.mock(base_url=BASE_URL)
-async def test_the_async_read_resources_decode_the_same_models(respx_mock: respx.MockRouter) -> None:
+async def test_the_async_read_resources_decode_the_same_models(
+    respx_mock: respx.MockRouter,
+) -> None:
     respx_mock.get("/v1/usage").mock(return_value=httpx.Response(200, json=USAGE_BODY))
     respx_mock.get("/v1/articles/a1").mock(
         return_value=httpx.Response(200, json={"id": "a1", "title": "T"})
