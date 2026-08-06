@@ -1,9 +1,9 @@
 # This workflow uses PyPI Trusted Publishing (OIDC) — no API token/password. It will
-# FAIL until a trusted publisher for the `shorty-py` project is registered on PyPI.
-# Because `shorty-py` does not exist on PyPI yet, use the PENDING publisher flow:
+# FAIL until a trusted publisher for the `shorty-sdk` project is registered on PyPI.
+# Because `shorty-sdk` does not exist on PyPI yet, use the PENDING publisher flow:
 #   https://pypi.org/manage/account/publishing/ -> "Add a new pending publisher" ->
 #   GitHub, with EXACTLY:
-#     PyPI Project Name: shorty-py
+#     PyPI Project Name: shorty-sdk
 #     Owner:             DevinoSolutions
 #     Repository name:   shorty-python
 #     Workflow name:     publish.yml

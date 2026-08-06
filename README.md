@@ -1,8 +1,8 @@
-# shorty-py
+# shorty-sdk
 
 [![CI](https://github.com/DevinoSolutions/shorty-python/actions/workflows/ci.yml/badge.svg)](https://github.com/DevinoSolutions/shorty-python/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/shorty-py.svg)](https://pypi.org/project/shorty-py/)
-[![Python](https://img.shields.io/pypi/pyversions/shorty-py.svg)](https://pypi.org/project/shorty-py/)
+[![PyPI](https://img.shields.io/pypi/v/shorty-sdk.svg)](https://pypi.org/project/shorty-sdk/)
+[![Python](https://img.shields.io/pypi/pyversions/shorty-sdk.svg)](https://pypi.org/project/shorty-sdk/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Official Python SDK for the **[Shorty](https://aishorty.com) API** — AI summarization,
@@ -17,10 +17,13 @@ transcription, and subtitling.
 ## Install
 
 ```bash
-pip install shorty-py
+pip install shorty-sdk
 ```
 
 Requires Python 3.10+.
+
+> The distribution is published as **`shorty-sdk`**, but the import package is
+> **`shorty_py`** — `pip install shorty-sdk`, then `from shorty_py import Shorty`.
 
 ## 60-second quickstart
 

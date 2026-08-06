@@ -39,7 +39,7 @@ jobs:
           # The default `Python-urllib/x.y` agent is refused (403) by the edge,
           # so identify the workflow explicitly.
           USER_AGENT = (
-              "shorty-py-spec-drift/1.0 "
+              "shorty-sdk-spec-drift/1.0 "
               "(+https://github.com/DevinoSolutions/shorty-python)"
           )
 

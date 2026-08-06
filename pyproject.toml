@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "shorty-py"
+name = "shorty-sdk"
 dynamic = ["version"]
 description = "Official Python SDK for the Shorty API — AI summarization, transcription, and subtitling (aishorty.com)."
 readme = "README.md"

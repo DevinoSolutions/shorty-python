@@ -76,7 +76,7 @@ def test_auth_and_user_agent_headers_have_the_documented_shape(
     assert headers["authorization"] == f"Bearer {TEST_API_KEY}"
     assert headers["accept"] == "application/json"
     assert re.fullmatch(
-        rf"shorty-py/{re.escape(__version__)} python/\d+\.\d+\.\d+", headers["user-agent"]
+        rf"shorty-sdk/{re.escape(__version__)} python/\d+\.\d+\.\d+", headers["user-agent"]
     )
     # The twin header for environments that forbid overriding User-Agent.
     assert headers["x-shorty-sdk"] == headers["user-agent"]
@@ -163,4 +163,4 @@ def test_debug_logging_is_redacted_and_never_prints_the_key(respx_mock: respx.Mo
 def test_the_version_is_the_single_source_of_truth_for_the_user_agent() -> None:
     from shorty_py._transport import default_user_agent
 
-    assert default_user_agent(__version__).startswith(f"shorty-py/{__version__} python/")
+    assert default_user_agent(__version__).startswith(f"shorty-sdk/{__version__} python/")

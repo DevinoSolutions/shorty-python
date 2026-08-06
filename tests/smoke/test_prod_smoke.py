@@ -100,7 +100,7 @@ def test_an_unknown_article_id_produces_the_rfc_9457_not_found_contract(
 ) -> None:
     """Proves the problem-document mapping against the real server, not a fixture."""
     with pytest.raises(NotFoundError) as caught:
-        client.articles.get("shorty-py-smoke-does-not-exist-00000000")
+        client.articles.get("shorty-sdk-smoke-does-not-exist-00000000")
 
     error = caught.value
     assert error.status == 404

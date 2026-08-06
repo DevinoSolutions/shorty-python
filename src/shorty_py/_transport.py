@@ -366,9 +366,9 @@ class AsyncTransport(_BaseTransport):
 
 
 def default_user_agent(version: str) -> str:
-    """``shorty-py/<sdk> python/<runtime>`` — mirrors the TS SDK's UA shape."""
+    """``shorty-sdk/<sdk> python/<runtime>`` — mirrors the TS SDK's UA shape."""
     py = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-    return f"shorty-py/{version} python/{py}"
+    return f"shorty-sdk/{version} python/{py}"
 
 
 def _decode_json(response: httpx.Response) -> Any:
