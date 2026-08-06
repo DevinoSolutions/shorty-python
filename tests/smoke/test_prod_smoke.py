@@ -56,26 +56,31 @@ def test_usage_returns_the_accounts_plan_limits_and_counters(client: Shorty) -> 
     assert isinstance(usage.usage.cloudConversionsUsedLast24h, int)
 
 
-def test_rate_limit_headers_parse_when_the_server_sends_them(client: Shorty) -> None:
-    """Conditional on purpose.
+def test_every_response_carries_the_servers_rate_limit_headers(client: Shorty) -> None:
+    """Unconditional since 2026-08-06.
 
-    ``rateLimitHeaders.ts`` states the serializer is not wired to a live limiter
-    yet, so requiring the headers here would fail for a *server* reason. Assert
-    the parse is correct **if** they are present, and tighten this to a hard
-    requirement once the limiter ships.
+    The burst limiter is live in ``definePublicRoute`` (Shorty open-api Phase 2)
+    and stamps the draft-11 pair (``RateLimit-Policy`` / ``RateLimit``) plus the
+    legacy ``X-RateLimit-*`` trio on every response, success or error. A missing
+    header is now a *server regression*, so this must fail rather than skip.
     """
     client.usage.get()
     rate_limit = client.last_rate_limit
-    if rate_limit is None:
-        pytest.skip(
-            "LOUD SKIP: the server sent no RateLimit / X-RateLimit-* headers on "
-            "GET /v1/usage. Expected until the server-side limiter is wired up; "
-            "make this assertion unconditional once it is."
-        )
-    for value in (rate_limit.limit, rate_limit.remaining):
-        assert value is None or isinstance(value, int)
-    if rate_limit.limit is not None and rate_limit.remaining is not None:
-        assert rate_limit.remaining <= rate_limit.limit
+    assert rate_limit is not None, (
+        "GET /v1/usage carried no RateLimit / X-RateLimit-* headers — the "
+        "server-side burst limiter regressed"
+    )
+
+    assert rate_limit.name, "RateLimit-Policy must name the policy"
+    assert isinstance(rate_limit.limit, int) and rate_limit.limit > 0
+    assert isinstance(rate_limit.window_seconds, int) and rate_limit.window_seconds > 0
+    assert isinstance(rate_limit.remaining, int) and rate_limit.remaining >= 0
+    assert rate_limit.remaining <= rate_limit.limit
+    assert isinstance(rate_limit.reset_seconds, int)
+    assert 0 <= rate_limit.reset_seconds <= rate_limit.window_seconds
+    assert isinstance(rate_limit.reset_at, int) and rate_limit.reset_at > 0
+
+    print(f"\nGET /v1/usage rate-limit headers -> {rate_limit}")
 
 
 def test_listing_articles_returns_the_documented_cursor_envelope(client: Shorty) -> None:

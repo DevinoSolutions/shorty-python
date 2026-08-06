@@ -142,8 +142,9 @@ class Shorty(_ClientBase):
     def last_rate_limit(self) -> RateLimit | None:
         """Rate-limit signal from the most recent response, or ``None``.
 
-        ``None`` is a normal outcome, not a bug: the server-side limiter is
-        still being wired up, so some routes emit no rate-limit headers yet.
+        Every authenticated ``/v1`` response carries the headers, so this is
+        populated in practice. It stays ``None`` when the request was refused
+        before the limiter ran (e.g. a 401) or no request has been made yet.
         """
         return self._transport.last_rate_limit
 

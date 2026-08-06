@@ -269,8 +269,9 @@ client.usage.get()
 client.last_rate_limit  # RateLimit(name=…, limit=…, remaining=…, reset_seconds=…)
 ```
 
-`last_rate_limit` is `None` when the response carried no rate-limit headers — that is
-a normal outcome today, not a bug.
+Every authenticated `/v1` response carries the headers, so `last_rate_limit` is
+populated after any successful call. It is `None` before the first request and when the
+server refused before the limiter ran (e.g. a 401).
 
 ## Webhooks
 

@@ -114,9 +114,10 @@ def _as_int(value: str | None) -> int | None:
 def parse_rate_limit(headers: Mapping[str, str]) -> RateLimit | None:
     """Parse the draft-11 and legacy rate-limit headers into a :class:`RateLimit`.
 
-    Returns ``None`` when the response carried none of them — which is the
-    current state of play for some routes, so callers (and the prod smoke test)
-    must treat rate-limit data as *conditional*.
+    Returns ``None`` when the response carried none of them. The live ``/v1``
+    surface stamps them on every response, but a 401 is refused before the
+    limiter runs and non-``/v1`` routes never emit them, so the field stays
+    optional.
     """
     hdrs = {k.lower(): v for k, v in headers.items()}
     policy = hdrs.get("ratelimit-policy")
