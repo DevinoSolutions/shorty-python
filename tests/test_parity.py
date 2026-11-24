@@ -42,6 +42,14 @@ OPERATION_MAP: dict[str, tuple[str, str, str, str]] = {
     "downloadSubtitles": ("subtitles", "download", "get", "/v1/subtitles/{jobId}/download"),
     "createSummary": ("summaries", "create", "post", "/v1/summaries"),
     "createSubtitles": ("subtitles", "create", "post", "/v1/subtitles"),
+    "listWebhookEndpoints": ("webhook_endpoints", "list", "get", "/v1/webhook-endpoints"),
+    "createWebhookEndpoint": ("webhook_endpoints", "create", "post", "/v1/webhook-endpoints"),
+    "deleteWebhookEndpoint": (
+        "webhook_endpoints",
+        "delete",
+        "delete",
+        "/v1/webhook-endpoints/{endpointId}",
+    ),
 }
 
 
@@ -67,8 +75,8 @@ def test_the_vendored_spec_is_the_one_this_sdk_was_written_against() -> None:
     assert SPEC["servers"][0]["url"] == "https://aishorty.com"
 
 
-def test_the_spec_publishes_exactly_eleven_operations() -> None:
-    assert len(SPEC_OPERATIONS) == 11, sorted(SPEC_OPERATIONS)
+def test_the_spec_publishes_exactly_fourteen_operations() -> None:
+    assert len(SPEC_OPERATIONS) == 14, sorted(SPEC_OPERATIONS)
 
 
 def test_every_spec_operation_has_an_sdk_method_declared() -> None:
@@ -84,8 +92,8 @@ def test_the_sdk_claims_no_operation_the_spec_no_longer_publishes() -> None:
 
 
 def test_there_is_no_allowlist_of_unimplemented_operations() -> None:
-    """The Phase 2 allowlist is deleted; 11/11 is the standing contract."""
-    assert len(OPERATION_MAP) == 11
+    """The Phase 2 allowlist is deleted; 14/14 is the standing contract."""
+    assert len(OPERATION_MAP) == 14
 
 
 @pytest.mark.parametrize("operation_id", sorted(OPERATION_MAP))

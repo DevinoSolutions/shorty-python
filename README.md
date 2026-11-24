@@ -8,7 +8,7 @@
 Official Python SDK for the **[Shorty](https://aishorty.com) API** — AI summarization,
 transcription, and subtitling.
 
-- All **11** `/v1` operations, **sync and async**
+- All **14** `/v1` operations, **sync and async**
 - One dependency (`httpx`), fully typed, ships `py.typed`
 - Typed RFC 9457 errors, cursor pagination, automatic idempotency keys,
   jittered retries, Standard-Webhooks verification
@@ -176,6 +176,29 @@ normalize_job_status(status.status)  # QUEUED | PROCESSING | SUCCESS | ERROR | C
 `wait_for` is a **client-side** loop. It returns the final status on success, raises
 `JobFailedError` (carrying the job's own error) on `ERROR` / `CANCELLED`, and
 `APITimeoutError` when the deadline elapses.
+
+### Webhook endpoints — `client.webhook_endpoints`
+
+Register an HTTPS endpoint for `job.succeeded` / `job.failed` events. The `whsec_…`
+signing secret is returned **only by `create`**, so store it then. Shorty pings the
+URL straight away, and only endpoints that answer with a 2xx (`verified_at` set)
+receive events:
+
+```python
+created = client.webhook_endpoints.create(
+    url="https://hooks.example.com/shorty",
+    event_types=["job.succeeded", "job.failed"],
+    description="Zapier",  # optional label
+)
+save_secret(created.endpoint.id, created.secret)  # never shown again
+
+for endpoint in client.webhook_endpoints.list().data:  # newest first, not paginated
+    print(endpoint.id, endpoint.url, endpoint.enabled, endpoint.verified_at)
+
+client.webhook_endpoints.delete(created.endpoint.id)
+```
+
+`create` takes no idempotency key, so it is never retried automatically.
 
 ## Errors
 

@@ -2,7 +2,7 @@
 
 Shorty is an AI media-summarization, transcription, and subtitling product. This
 package is a hand-written, dependency-light (``httpx`` only) client for its
-public ``/v1`` REST surface — all 11 operations, sync and async.
+public ``/v1`` REST surface — all 14 operations, sync and async.
 
 ::
 
@@ -50,6 +50,7 @@ from .types import (
     CreateSummaryUrlBody,
     CreateSummaryYoutubeBody,
     CreateTranscriptionBody,
+    CreateWebhookEndpointBody,
     FieldError,
     JobAccepted,
     JobStatus,
@@ -69,6 +70,11 @@ from .types import (
     UsageResponse,
     UsageSubscription,
     UsageTranscriptionLimits,
+    WebhookEndpoint,
+    WebhookEndpointCreated,
+    WebhookEndpointDeleted,
+    WebhookEndpointListResponse,
+    WebhookEventType,
 )
 from .webhooks import (
     DEFAULT_TOLERANCE_SECONDS,
@@ -101,6 +107,7 @@ __all__ = [
     "CreateSummaryUrlBody",
     "CreateSummaryYoutubeBody",
     "CreateTranscriptionBody",
+    "CreateWebhookEndpointBody",
     "FieldError",
     "JobAccepted",
     "JobFailedError",
@@ -131,6 +138,11 @@ __all__ = [
     "UsageSubscription",
     "UsageTranscriptionLimits",
     "ValidationError",
+    "WebhookEndpoint",
+    "WebhookEndpointCreated",
+    "WebhookEndpointDeleted",
+    "WebhookEndpointListResponse",
+    "WebhookEventType",
     "WebhookVerifyFailure",
     "WebhookVerifyResult",
     "__version__",

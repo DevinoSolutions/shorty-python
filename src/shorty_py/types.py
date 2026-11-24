@@ -35,6 +35,7 @@ __all__ = [
     "CreateSummaryUrlBody",
     "CreateSummaryYoutubeBody",
     "CreateTranscriptionBody",
+    "CreateWebhookEndpointBody",
     "FieldError",
     "JobAccepted",
     "JobStatus",
@@ -54,6 +55,11 @@ __all__ = [
     "UsageResponse",
     "UsageSubscription",
     "UsageTranscriptionLimits",
+    "WebhookEndpoint",
+    "WebhookEndpointCreated",
+    "WebhookEndpointDeleted",
+    "WebhookEndpointListResponse",
+    "WebhookEventType",
 ]
 
 _T = TypeVar("_T", bound="_Wire")
@@ -561,6 +567,96 @@ SummaryResult = SummaryAccepted | SummaryAlreadyComplete
 
 
 # ---------------------------------------------------------------------------
+# Webhook endpoints
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class WebhookEndpoint(_Wire):
+    """A registered webhook endpoint. Its signing secret is never listed."""
+
+    id: str = ""
+    url: str = ""
+    description: str | None = None
+    event_types: Sequence[str] = ()
+    #: ``False`` when the endpoint was disabled by hand or by the failure ladder.
+    enabled: bool = False
+    #: Set once the endpoint answered the verification ``ping`` with a 2xx.
+    #: Only verified endpoints receive events.
+    verified_at: str | None = None
+    disabled_at: str | None = None
+    #: ``"manual"`` or ``"auto_failure_ladder"``, or ``None``.
+    disabled_reason: str | None = None
+    created_at: str = ""
+    extra: Mapping[str, Any] = _extra()
+
+    @classmethod
+    def from_wire(cls, data: Mapping[str, Any] | None) -> WebhookEndpoint:
+        payload: Mapping[str, Any] = data or {}
+        known = cls._field_names()
+        kwargs = {k: v for k, v in payload.items() if k in known}
+        raw_events = kwargs.pop("event_types", None)
+        events = tuple(raw_events) if isinstance(raw_events, list) else ()
+        extra = {k: v for k, v in payload.items() if k not in known}
+        return cls(**kwargs, event_types=events, extra=MappingProxyType(extra))
+
+
+@dataclass(frozen=True, slots=True)
+class WebhookEndpointListResponse(_Wire):
+    """``GET /v1/webhook-endpoints`` — every endpoint, newest first. Not paginated."""
+
+    data: Sequence[WebhookEndpoint] = ()
+    extra: Mapping[str, Any] = _extra()
+
+    @classmethod
+    def from_wire(cls, data: Mapping[str, Any] | None) -> WebhookEndpointListResponse:
+        payload: Mapping[str, Any] = data or {}
+        extra = {k: v for k, v in payload.items() if k not in cls._field_names()}
+        rows = payload.get("data")
+        return cls(
+            data=tuple(WebhookEndpoint.from_wire(r) for r in rows if isinstance(r, Mapping))
+            if isinstance(rows, list)
+            else (),
+            extra=MappingProxyType(extra),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class WebhookEndpointCreated(_Wire):
+    """``POST /v1/webhook-endpoints`` — the new endpoint plus its signing secret.
+
+    ``secret`` (``whsec_…``) is returned **only here**: store it to verify
+    deliveries with :func:`~shorty_py.verify_webhook_signature`.
+    """
+
+    endpoint: WebhookEndpoint = field(default_factory=WebhookEndpoint)
+    secret: str = field(default="", repr=False)
+    extra: Mapping[str, Any] = _extra()
+
+    @classmethod
+    def from_wire(cls, data: Mapping[str, Any] | None) -> WebhookEndpointCreated:
+        payload: Mapping[str, Any] = data or {}
+        extra = {k: v for k, v in payload.items() if k not in cls._field_names()}
+        raw_endpoint = payload.get("endpoint")
+        return cls(
+            endpoint=WebhookEndpoint.from_wire(
+                raw_endpoint if isinstance(raw_endpoint, Mapping) else None
+            ),
+            secret=str(payload.get("secret") or ""),
+            extra=MappingProxyType(extra),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class WebhookEndpointDeleted(_Wire):
+    """``DELETE /v1/webhook-endpoints/{id}`` — confirms the deletion."""
+
+    id: str = ""
+    deleted: bool = False
+    extra: Mapping[str, Any] = _extra()
+
+
+# ---------------------------------------------------------------------------
 # Request bodies
 # ---------------------------------------------------------------------------
 #
@@ -632,3 +728,21 @@ class CreateSubtitlesBody(_CreateSubtitlesOptional):
 
     #: A URL to the media to caption.
     url: str
+
+
+#: An event Shorty can deliver to a webhook endpoint.
+WebhookEventType = Literal["job.succeeded", "job.failed"]
+
+
+class _CreateWebhookEndpointOptional(TypedDict, total=False):
+    #: Your label for the endpoint (up to 200 characters).
+    description: str
+
+
+class CreateWebhookEndpointBody(_CreateWebhookEndpointOptional):
+    """``POST /v1/webhook-endpoints`` body."""
+
+    #: A public HTTPS URL on port 443.
+    url: str
+    #: At least one event to deliver.
+    event_types: list[WebhookEventType]

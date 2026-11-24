@@ -8,6 +8,7 @@ from .subtitles import AsyncSubtitlesResource, SubtitlesResource
 from .summaries import AsyncSummariesResource, SummariesResource
 from .transcriptions import AsyncTranscriptionsResource, TranscriptionsResource
 from .usage import AsyncUsageResource, UsageResource
+from .webhook_endpoints import AsyncWebhookEndpointsResource, WebhookEndpointsResource
 
 __all__ = [
     "ArticlesResource",
@@ -17,11 +18,13 @@ __all__ = [
     "AsyncSummariesResource",
     "AsyncTranscriptionsResource",
     "AsyncUsageResource",
+    "AsyncWebhookEndpointsResource",
     "JobsResource",
     "NormalizedJobStatus",
     "SubtitlesResource",
     "SummariesResource",
     "TranscriptionsResource",
     "UsageResource",
+    "WebhookEndpointsResource",
     "normalize_job_status",
 ]

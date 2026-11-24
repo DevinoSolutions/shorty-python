@@ -32,6 +32,9 @@
     },
     {
       "name": "Summaries"
+    },
+    {
+      "name": "Webhooks"
     }
   ],
   "security": [
@@ -320,7 +323,7 @@
             "BearerApiKey": []
           }
         ],
-        "description": "Returns one article the authenticated account owns, including its generated summary parts and extracted body text. A non-existent or foreign id returns 404.",
+        "description": "Returns one article, including its generated summary parts and extracted body text. You can read your own articles and any public one, which includes the `article_id` that POST /v1/summaries returns as `already_complete` for a video or web page another account summarized first. A non-existent id, or a private article (pasted text, an uploaded file or a private share link) that belongs to another account, returns 404.",
         "parameters": [
           {
             "in": "path",
@@ -512,7 +515,7 @@
             "BearerApiKey": []
           }
         ],
-        "description": "Starts an async transcription of media at the given URL. Responds 202 with a `Location` header and a `job_id` you can poll at GET /v1/jobs/{id}. Send an `Idempotency-Key` header to make retries safe. If the transcription service cannot start the job, responds 503.",
+        "description": "Starts an async transcription of media at the given URL. Responds 202 with a `Location` header and a `job_id` you can poll at GET /v1/jobs/{id}; the same id is the `transcription_id` you read the result with at GET /v1/transcriptions/{id}. Send an `Idempotency-Key` header to make retries safe. The URL must be a direct link to an audio or video file: a YouTube link is refused with 400 (summarize the video instead; the article carries its transcript), as is any web page. A free account has a monthly allowance: when it is used up the response is 429 with the `quota_exhausted` code (a burst limit is the `rate_limited` code). A transcription that finds no audio ends in ERROR and does not use the allowance. If the transcription service cannot start the job, responds 503.",
         "parameters": [
           {
             "in": "header",
@@ -542,7 +545,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobAccepted"
+                  "$ref": "#/components/schemas/TranscriptionAccepted"
                 }
               }
             }
@@ -642,7 +645,7 @@
             "BearerApiKey": []
           }
         ],
-        "description": "Returns one transcription the authenticated account owns, including the transcript text. A non-existent or foreign id returns 404.",
+        "description": "Returns one transcription the authenticated account owns, including the transcript text. A non-existent or foreign id returns 404. When `output_language` was set, each GET advances the translation by one slice of work and can take up to about a minute to answer (use a client timeout of at least 60 seconds): keep polling until `translation_status` is SUCCEEDED, FAILED or SKIPPED (see `translation_progress`).",
         "parameters": [
           {
             "in": "path",
@@ -740,7 +743,7 @@
             "BearerApiKey": []
           }
         ],
-        "description": "Returns the status of an async job the authenticated account started (a summary, transcription, or subtitle job created via a POST here). The body is the canonical nested job-status shape used across every Shorty surface. A non-existent or foreign job id returns 404.",
+        "description": "Returns the status of an async job the authenticated account started (a summary, transcription, or subtitle job created via a POST here). The body is the canonical nested job-status shape used across every Shorty surface. A non-existent or foreign job id returns 404. A transcription created with `output_language` reports SUCCESS when the transcript is ready, before its translation is done: keep polling GET /v1/transcriptions/{transcriptionId} until `translation_status` is SUCCEEDED, FAILED or SKIPPED.",
         "parameters": [
           {
             "in": "path",
@@ -960,7 +963,7 @@
             "BearerApiKey": []
           }
         ],
-        "description": "Starts an async summary job for a YouTube video, a web page, or pasted text, selected by the `source` field. Usually responds 202 with a `Location` header and a `job_id` you can poll at GET /v1/jobs/{id} (send an `Idempotency-Key` header to make retries safe). If the exact source was already summarized in the requested language it responds 200 `already_complete` with the `article_id` and no job to poll.",
+        "description": "Starts an async summary job for a YouTube video, a web page, or pasted text, selected by the `source` field. Usually responds 202 with a `Location` header and a `job_id` you can poll at GET /v1/jobs/{id} (send an `Idempotency-Key` header to make retries safe). If the exact source was already summarized in the requested language (by anyone, not only by you) it responds 200 `already_complete` with the `article_id` and no job to poll; read it at GET /v1/articles/{id}. A web-page `url` whose path ends in `.doc` (a legacy Word file, which the web-page summarizer cannot read) is refused with 422 `unsupported_document_format` before any job starts.",
         "parameters": [
           {
             "in": "header",
@@ -1227,6 +1230,265 @@
           }
         }
       }
+    },
+    "/v1/webhook-endpoints": {
+      "get": {
+        "operationId": "listWebhookEndpoints",
+        "summary": "List webhook endpoints",
+        "tags": [
+          "Webhooks"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Returns the authenticated account’s webhook endpoints, newest first. Signing secrets are never listed: an endpoint’s secret is returned once, when it is created.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpointListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWebhookEndpoint",
+        "summary": "Create a webhook endpoint",
+        "tags": [
+          "Webhooks"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Registers an HTTPS endpoint for job events and returns it with its `whsec_` signing secret, which is shown only in this response. Shorty immediately POSTs a signed `ping` event to the URL; a 2xx answer sets `verified_at`, and only verified endpoints receive events. A URL that is not public HTTPS on port 443 is refused with 400 `validation_failed`; an account already at its endpoint limit gets 429 `quota_exhausted`.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWebhookEndpointBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpointCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/webhook-endpoints/{endpointId}": {
+      "delete": {
+        "operationId": "deleteWebhookEndpoint",
+        "summary": "Delete a webhook endpoint",
+        "tags": [
+          "Webhooks"
+        ],
+        "security": [
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "description": "Deletes one of the authenticated account’s webhook endpoints and any deliveries still queued for it. A non-existent or foreign id returns 404.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "endpointId",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpointDeleted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1247,6 +1509,43 @@
             "type": "string",
             "minLength": 2,
             "maxLength": 20
+          },
+          "output_language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "ar",
+              "bn",
+              "cs",
+              "da",
+              "de",
+              "el",
+              "es",
+              "fi",
+              "fr",
+              "he",
+              "hi",
+              "hu",
+              "id",
+              "it",
+              "ja",
+              "ko",
+              "ms",
+              "nl",
+              "no",
+              "pl",
+              "pt",
+              "ro",
+              "ru",
+              "sv",
+              "th",
+              "tr",
+              "uk",
+              "vi",
+              "zh"
+            ],
+            "description": "Language to deliver the transcript in, as an ISO 639-1 code. \"en\" is produced by the speech model itself and is free; every other language is a translation of the finished transcript and requires Shorty Premium.",
+            "example": "es"
           }
         },
         "required": [
@@ -1361,14 +1660,20 @@
           },
           "style": {
             "default": "CLEAN",
-            "description": "Subtitle style. CLEAN is free; TIKTOK/PODCAST/MINIMAL require Premium.",
+            "description": "Subtitle style. CLEAN, MINIMAL and CLASSIC are on every plan; the others require Premium.",
             "example": "CLEAN",
             "type": "string",
             "enum": [
               "CLEAN",
+              "MINIMAL",
+              "CLASSIC",
               "TIKTOK",
               "PODCAST",
-              "MINIMAL"
+              "BOLD_POP",
+              "BOXED",
+              "NEWS",
+              "NEON",
+              "ELEGANT"
             ]
           },
           "duration_seconds": {
@@ -1380,6 +1685,43 @@
         },
         "required": [
           "url"
+        ]
+      },
+      "CreateWebhookEndpointBody": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "description": "A public HTTPS URL on port 443. Private, loopback and metadata addresses are refused.",
+            "example": "https://hooks.example.com/shorty"
+          },
+          "event_types": {
+            "minItems": 1,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "job.succeeded",
+                "job.failed"
+              ],
+              "description": "An event Shorty can deliver.",
+              "example": "job.succeeded"
+            },
+            "description": "The events to deliver (at least one)."
+          },
+          "description": {
+            "description": "Your label for the endpoint.",
+            "example": "Zapier",
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "url",
+          "event_types"
         ]
       },
       "UsageResponse": {
@@ -1447,38 +1789,26 @@
             "description": "Whether the account is currently in a free trial."
           },
           "trialEndsAt": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
             "description": "ISO-8601 timestamp the trial ends, or null.",
-            "example": "2026-08-01T00:00:00.000Z"
+            "example": "2026-08-01T00:00:00.000Z",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "expiresAt": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "ISO-8601 timestamp access expires, or null if perpetual/none."
+            "description": "ISO-8601 timestamp access expires, or null if perpetual/none.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "willRenew": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Whether the subscription auto-renews, or null if not applicable."
+            "description": "Whether the subscription auto-renews, or null if not applicable.",
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1558,15 +1888,11 @@
             "description": "Whether the account may use the managed cloud conversion queue."
           },
           "dailyCloudQuota": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Daily cloud-conversion quota, or null for unlimited (paid tiers)."
+            "description": "Daily cloud-conversion quota, or null for unlimited (paid tiers).",
+            "type": [
+              "number",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1586,15 +1912,11 @@
             "description": "Cloud conversions consumed in the last 24 hours."
           },
           "cloudConversionsRemaining": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Cloud conversions remaining today, or null for unlimited."
+            "description": "Cloud conversions remaining today, or null for unlimited.",
+            "type": [
+              "number",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1700,15 +2022,11 @@
             "description": "Whether another page exists after this one."
           },
           "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Opaque cursor for the next page (pass as `?cursor=`), or null on the last page. Only valid against the SAME query filter."
+            "description": "Opaque cursor for the next page (pass as `?cursor=`), or null on the last page. Only valid against the SAME query filter.",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1727,27 +2045,19 @@
             "example": "a1b2c3d4-0000-4000-8000-000000000000"
           },
           "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
             "description": "Article title, or null if not yet summarized.",
-            "example": "How transformers work"
+            "example": "How transformers work",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Short description/summary lead, or null."
+            "description": "Short description/summary lead, or null.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "article_type": {
             "type": "string",
@@ -1755,15 +2065,11 @@
             "example": "YOUTUBE_ARTICLE"
           },
           "source_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The original source URL, or null (e.g. text/file input)."
+            "description": "The original source URL, or null (e.g. text/file input).",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "created_at": {
             "type": "string",
@@ -1812,27 +2118,19 @@
             "example": "a1b2c3d4-0000-4000-8000-000000000000"
           },
           "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
             "description": "Article title, or null if not yet summarized.",
-            "example": "How transformers work"
+            "example": "How transformers work",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Short description/summary lead, or null."
+            "description": "Short description/summary lead, or null.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "article_type": {
             "type": "string",
@@ -1840,15 +2138,11 @@
             "example": "YOUTUBE_ARTICLE"
           },
           "source_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The original source URL, or null (e.g. text/file input)."
+            "description": "The original source URL, or null (e.g. text/file input).",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "created_at": {
             "type": "string",
@@ -1880,15 +2174,11 @@
             "description": "The generated summary, or null if not yet produced."
           },
           "body_text": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The extracted source text / transcript backing the summary, or null."
+            "description": "The extracted source text / transcript backing the summary, or null.",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1907,26 +2197,18 @@
         "type": "object",
         "properties": {
           "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Section heading, or null."
+            "description": "Section heading, or null.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Section body, or null."
+            "description": "Section body, or null.",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1949,15 +2231,11 @@
             "description": "Whether another page exists after this one."
           },
           "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Opaque cursor for the next page (pass as `?cursor=`), or null on the last page. Only valid against the SAME query filter."
+            "description": "Opaque cursor for the next page (pass as `?cursor=`), or null on the last page. Only valid against the SAME query filter.",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1977,7 +2255,19 @@
           },
           "status": {
             "type": "string",
-            "description": "Processing status: PENDING, PROCESSING, SUCCESS, or ERROR.",
+            "description": "Processing status: PENDING, PROCESSING, COMPLETED, or ERROR. The matching job at GET /v1/jobs/{id} spells it differently (lower-case `success`); `normalized_status` is the same in both.",
+            "example": "COMPLETED"
+          },
+          "normalized_status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "PROCESSING",
+              "SUCCESS",
+              "ERROR",
+              "CANCELLED"
+            ],
+            "description": "`status` in the vocabulary GET /v1/jobs/{id} also reports as `normalized_status`: PENDING is QUEUED, COMPLETED is SUCCESS. SUCCESS and ERROR are final.",
             "example": "SUCCESS"
           },
           "progress": {
@@ -1991,30 +2281,85 @@
             "example": "WHISPER_BASE"
           },
           "language": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Requested/detected language, or null for auto-detect."
+            "description": "Requested/detected language, or null for auto-detect.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "input_file": {
             "type": "string",
             "description": "The source media URL that was transcribed."
           },
           "error": {
+            "description": "Error message if the job failed, else null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "output_language": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "en",
+                  "ar",
+                  "bn",
+                  "cs",
+                  "da",
+                  "de",
+                  "el",
+                  "es",
+                  "fi",
+                  "fr",
+                  "he",
+                  "hi",
+                  "hu",
+                  "id",
+                  "it",
+                  "ja",
+                  "ko",
+                  "ms",
+                  "nl",
+                  "no",
+                  "pl",
+                  "pt",
+                  "ro",
+                  "ru",
+                  "sv",
+                  "th",
+                  "tr",
+                  "uk",
+                  "vi",
+                  "zh"
+                ],
+                "description": "Language to deliver the transcript in, as an ISO 639-1 code. \"en\" is produced by the speech model itself and is free; every other language is a translation of the finished transcript and requires Shorty Premium.",
+                "example": "es"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Error message if the job failed, else null."
+            "description": "The language the transcript was requested in, or null when none was requested."
+          },
+          "translation_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PENDING",
+                  "RUNNING",
+                  "SUCCEEDED",
+                  "FAILED",
+                  "SKIPPED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "State of the translation into `output_language`: PENDING and RUNNING are in flight, SUCCEEDED means `translated_output_text` is ready, SKIPPED means the audio already was in that language, FAILED means it could not be translated (see `translation_error`). Null when no translation was needed (no output language, or English, which the speech model produces directly)."
           },
           "created_at": {
             "type": "string",
@@ -2025,21 +2370,29 @@
         "required": [
           "id",
           "status",
+          "normalized_status",
           "progress",
           "model_type",
           "language",
           "input_file",
           "error",
+          "output_language",
+          "translation_status",
           "created_at"
         ],
         "additionalProperties": false
       },
-      "JobAccepted": {
+      "TranscriptionAccepted": {
         "type": "object",
         "properties": {
           "job_id": {
             "type": "string",
             "description": "The id of the accepted async job.",
+            "example": "j1b2c3d4-0000-4000-8000-000000000000"
+          },
+          "jobId": {
+            "type": "string",
+            "description": "The job id again, under the camelCase name GET /v1/jobs/{id} uses. Identical to `job_id`.",
             "example": "j1b2c3d4-0000-4000-8000-000000000000"
           },
           "status": {
@@ -2051,12 +2404,19 @@
             "type": "string",
             "description": "Relative path to poll this job’s status (GET /v1/jobs/{id}).",
             "example": "/v1/jobs/j1b2c3d4-0000-4000-8000-000000000000"
+          },
+          "transcription_id": {
+            "type": "string",
+            "description": "The transcription id: read the result at GET /v1/transcriptions/{id}. Identical to `job_id`.",
+            "example": "j1b2c3d4-0000-4000-8000-000000000000"
           }
         },
         "required": [
           "job_id",
+          "jobId",
           "status",
-          "tracking_url"
+          "tracking_url",
+          "transcription_id"
         ],
         "additionalProperties": false
       },
@@ -2070,7 +2430,19 @@
           },
           "status": {
             "type": "string",
-            "description": "Processing status: PENDING, PROCESSING, SUCCESS, or ERROR.",
+            "description": "Processing status: PENDING, PROCESSING, COMPLETED, or ERROR. The matching job at GET /v1/jobs/{id} spells it differently (lower-case `success`); `normalized_status` is the same in both.",
+            "example": "COMPLETED"
+          },
+          "normalized_status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "PROCESSING",
+              "SUCCESS",
+              "ERROR",
+              "CANCELLED"
+            ],
+            "description": "`status` in the vocabulary GET /v1/jobs/{id} also reports as `normalized_status`: PENDING is QUEUED, COMPLETED is SUCCESS. SUCCESS and ERROR are final.",
             "example": "SUCCESS"
           },
           "progress": {
@@ -2084,30 +2456,85 @@
             "example": "WHISPER_BASE"
           },
           "language": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Requested/detected language, or null for auto-detect."
+            "description": "Requested/detected language, or null for auto-detect.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "input_file": {
             "type": "string",
             "description": "The source media URL that was transcribed."
           },
           "error": {
+            "description": "Error message if the job failed, else null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "output_language": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "en",
+                  "ar",
+                  "bn",
+                  "cs",
+                  "da",
+                  "de",
+                  "el",
+                  "es",
+                  "fi",
+                  "fr",
+                  "he",
+                  "hi",
+                  "hu",
+                  "id",
+                  "it",
+                  "ja",
+                  "ko",
+                  "ms",
+                  "nl",
+                  "no",
+                  "pl",
+                  "pt",
+                  "ro",
+                  "ru",
+                  "sv",
+                  "th",
+                  "tr",
+                  "uk",
+                  "vi",
+                  "zh"
+                ],
+                "description": "Language to deliver the transcript in, as an ISO 639-1 code. \"en\" is produced by the speech model itself and is free; every other language is a translation of the finished transcript and requires Shorty Premium.",
+                "example": "es"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Error message if the job failed, else null."
+            "description": "The language the transcript was requested in, or null when none was requested."
+          },
+          "translation_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PENDING",
+                  "RUNNING",
+                  "SUCCEEDED",
+                  "FAILED",
+                  "SKIPPED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "State of the translation into `output_language`: PENDING and RUNNING are in flight, SUCCEEDED means `translated_output_text` is ready, SKIPPED means the audio already was in that language, FAILED means it could not be translated (see `translation_error`). Null when no translation was needed (no output language, or English, which the speech model produces directly)."
           },
           "created_at": {
             "type": "string",
@@ -2115,27 +2542,117 @@
             "example": "2026-07-20T12:00:00.000Z"
           },
           "output_text": {
+            "description": "The speech engine result as a JSON-encoded STRING (text, segments, language, duration), or null if not yet produced. Kept for existing callers; read `text` and `segments` instead of parsing it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "description": "The transcript as plain text, or null if not yet produced. Empty for a recording with no speech in it.",
+            "example": "Okay, we are trying this for a second time.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "segments": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "start": {
+                      "type": "number",
+                      "description": "Segment start, in seconds."
+                    },
+                    "end": {
+                      "type": "number",
+                      "description": "Segment end, in seconds."
+                    },
+                    "text": {
+                      "type": "string",
+                      "description": "What was said in the segment."
+                    }
+                  },
+                  "required": [
+                    "start",
+                    "end",
+                    "text"
+                  ],
+                  "additionalProperties": false
+                }
               },
               {
                 "type": "null"
               }
             ],
-            "description": "The transcript text, or null if not yet produced."
+            "description": "The transcript cut into timed segments, or null when none is available."
+          },
+          "translated_output_text": {
+            "description": "The transcript translated into `output_language`, in the same format as `output_text`, or null until `translation_status` is SUCCEEDED.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "translation_progress": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "done_batches": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "Batches of the transcript translated so far."
+                  },
+                  "total_batches": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "Batches the transcript is cut into."
+                  }
+                },
+                "required": [
+                  "done_batches",
+                  "total_batches"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How far a translation in flight has got, so a client can show \"Translating... 40%\". Each GET of this endpoint advances it by a few batches (about 20 seconds of work); keep polling until `translation_status` is terminal. Null until the first batch starts and when no translation is owed."
+          },
+          "translation_error": {
+            "description": "Why the translation failed when `translation_status` is FAILED, else null. The untranslated `output_text` is unaffected.",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "id",
           "status",
+          "normalized_status",
           "progress",
           "model_type",
           "language",
           "input_file",
           "error",
+          "output_language",
+          "translation_status",
           "created_at",
-          "output_text"
+          "output_text",
+          "text",
+          "segments",
+          "translated_output_text",
+          "translation_progress",
+          "translation_error"
         ],
         "additionalProperties": false
       },
@@ -2147,10 +2664,27 @@
             "description": "The job id.",
             "example": "j1b2c3d4-0000-4000-8000-000000000000"
           },
+          "job_id": {
+            "type": "string",
+            "description": "The job id again, under the snake_case name the 202 response uses. Identical to `jobId`.",
+            "example": "j1b2c3d4-0000-4000-8000-000000000000"
+          },
           "status": {
             "type": "string",
-            "description": "Un-normalized status string (queued / processing / success / error / cancelled).",
+            "description": "Un-normalized status string (queued / processing / success / error / cancelled). Read `normalized_status` to compare it with a transcription’s `normalized_status`.",
             "example": "processing"
+          },
+          "normalized_status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "PROCESSING",
+              "SUCCESS",
+              "ERROR",
+              "CANCELLED"
+            ],
+            "description": "`status` in the one vocabulary shared with the transcription resources: QUEUED, PROCESSING, SUCCESS, ERROR or CANCELLED. SUCCESS, ERROR and CANCELLED are final.",
+            "example": "PROCESSING"
           },
           "progress": {
             "description": "Completion fraction 0–100, when known.",
@@ -2158,28 +2692,20 @@
           },
           "step": {
             "description": "Human-readable current step, or null.",
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+            "type": [
+              "string",
+              "null"
             ]
           },
           "error": {
             "description": "Error message if the job failed, or null.",
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+            "type": [
+              "string",
+              "null"
             ]
           },
           "output": {
-            "description": "Job-type-specific extras (e.g. jobType, title, outputId, articleId, transcriptionId).",
+            "description": "Job-type-specific extras: `jobType`, `title`, `outputId`, and the id of the result. `articleId` is set on a summary job once the article exists (read it at GET /v1/articles/{articleId}); `transcriptionId` is set on a transcription job (read it at GET /v1/transcriptions/{transcriptionId}).",
             "type": "object",
             "propertyNames": {
               "type": "string"
@@ -2189,7 +2715,9 @@
         },
         "required": [
           "jobId",
-          "status"
+          "job_id",
+          "status",
+          "normalized_status"
         ],
         "additionalProperties": false
       },
@@ -2241,7 +2769,7 @@
           },
           "article_id": {
             "type": "string",
-            "description": "The id of the already-complete article — fetch it at GET /v1/articles/{id}.",
+            "description": "The id of the already-complete article — fetch it at GET /v1/articles/{id}. It is readable by this account even when another account summarized the source first.",
             "example": "a1b2c3d4"
           }
         },
@@ -2255,15 +2783,62 @@
         "type": "object",
         "properties": {
           "job_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
             "description": "The id of the accepted async job, or null when the job was accepted but is not trackable (poll is unavailable).",
+            "example": "j1b2c3d4-0000-4000-8000-000000000000",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "jobId": {
+            "description": "The job id again, under the camelCase name GET /v1/jobs/{id} uses. Identical to `job_id`, null when it is.",
+            "example": "j1b2c3d4-0000-4000-8000-000000000000",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "Initial job status (typically \"queued\").",
+            "example": "queued"
+          },
+          "tracking_url": {
+            "description": "Relative path to poll this job (GET /v1/jobs/{id}), or null when tracking is unavailable.",
+            "example": "/v1/jobs/j1b2c3d4-0000-4000-8000-000000000000",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "article_id": {
+            "description": "The created article id — present only on the accepted-but-untrackable case, so the caller can still locate the result at GET /v1/articles/{id}.",
+            "example": "a1b2c3d4",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "job_id",
+          "jobId",
+          "status",
+          "tracking_url"
+        ],
+        "additionalProperties": false
+      },
+      "JobAccepted": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "description": "The id of the accepted async job.",
+            "example": "j1b2c3d4-0000-4000-8000-000000000000"
+          },
+          "jobId": {
+            "type": "string",
+            "description": "The job id again, under the camelCase name GET /v1/jobs/{id} uses. Identical to `job_id`.",
             "example": "j1b2c3d4-0000-4000-8000-000000000000"
           },
           "status": {
@@ -2272,34 +2847,142 @@
             "example": "queued"
           },
           "tracking_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Relative path to poll this job (GET /v1/jobs/{id}), or null when tracking is unavailable.",
+            "type": "string",
+            "description": "Relative path to poll this job’s status (GET /v1/jobs/{id}).",
             "example": "/v1/jobs/j1b2c3d4-0000-4000-8000-000000000000"
-          },
-          "article_id": {
-            "description": "The created article id — present only on the accepted-but-untrackable case, so the caller can still locate the result at GET /v1/articles/{id}.",
-            "example": "a1b2c3d4",
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
           }
         },
         "required": [
           "job_id",
+          "jobId",
           "status",
           "tracking_url"
+        ],
+        "additionalProperties": false
+      },
+      "WebhookEndpointListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WebhookEndpoint"
+            },
+            "description": "The account’s endpoints, newest first."
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "WebhookEndpoint": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Endpoint id (use it on DELETE /v1/webhook-endpoints/{id}).",
+            "example": "6f1c2a3b-0000-4000-8000-000000000000"
+          },
+          "url": {
+            "type": "string",
+            "description": "The HTTPS URL Shorty POSTs events to.",
+            "example": "https://hooks.example.com/shorty"
+          },
+          "description": {
+            "description": "Your label for the endpoint, or null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "event_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The events this endpoint receives.",
+            "example": [
+              "job.succeeded"
+            ]
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "False when the endpoint was disabled by hand or by the failure ladder."
+          },
+          "verified_at": {
+            "description": "When the endpoint answered the verification ping with a 2xx, or null. Events are only delivered to verified endpoints.",
+            "example": "2026-10-21T12:00:00.000Z",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "disabled_at": {
+            "description": "When the endpoint was disabled, or null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "disabled_reason": {
+            "description": "Why it was disabled (\"manual\" or \"auto_failure_ladder\"), or null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp the endpoint was created.",
+            "example": "2026-10-21T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "description",
+          "event_types",
+          "enabled",
+          "verified_at",
+          "disabled_at",
+          "disabled_reason",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "WebhookEndpointCreated": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "$ref": "#/components/schemas/WebhookEndpoint"
+          },
+          "secret": {
+            "type": "string",
+            "description": "The endpoint’s `whsec_` signing secret. Returned only here: store it to verify the `webhook-signature` header of every delivery."
+          }
+        },
+        "required": [
+          "endpoint",
+          "secret"
+        ],
+        "additionalProperties": false
+      },
+      "WebhookEndpointDeleted": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The deleted endpoint’s id."
+          },
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "id",
+          "deleted"
         ],
         "additionalProperties": false
       }

@@ -33,6 +33,10 @@ from .resources.subtitles import AsyncSubtitlesResource, SubtitlesResource
 from .resources.summaries import AsyncSummariesResource, SummariesResource
 from .resources.transcriptions import AsyncTranscriptionsResource, TranscriptionsResource
 from .resources.usage import AsyncUsageResource, UsageResource
+from .resources.webhook_endpoints import (
+    AsyncWebhookEndpointsResource,
+    WebhookEndpointsResource,
+)
 from .types import RateLimit
 
 __all__ = ["AsyncShorty", "Shorty"]
@@ -137,6 +141,7 @@ class Shorty(_ClientBase):
         self.summaries = SummariesResource(self._transport)
         self.subtitles = SubtitlesResource(self._transport)
         self.jobs = JobsResource(self._transport)
+        self.webhook_endpoints = WebhookEndpointsResource(self._transport)
 
     @property
     def last_rate_limit(self) -> RateLimit | None:
@@ -230,6 +235,7 @@ class AsyncShorty(_ClientBase):
         self.summaries = AsyncSummariesResource(self._transport)
         self.subtitles = AsyncSubtitlesResource(self._transport)
         self.jobs = AsyncJobsResource(self._transport)
+        self.webhook_endpoints = AsyncWebhookEndpointsResource(self._transport)
 
     @property
     def last_rate_limit(self) -> RateLimit | None:
